@@ -1,0 +1,35 @@
+---
+- name: Check whether swap file already exists
+  ansible.builtin.stat:
+    path: "{{ swap_file_path }}"
+  register: swap_file_stat
+
+- name: Allocate swap file
+  ansible.builtin.command:
+    cmd: "fallocate -l {{ swap_file_size_mb }}M {{ swap_file_path }}"
+  when: not swap_file_stat.stat.exists
+
+- name: Set swap file permissions
+  ansible.builtin.file:
+    path: "{{ swap_file_path }}"
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Format swap file
+  ansible.builtin.command:
+    cmd: "mkswap {{ swap_file_path }}"
+  when: not swap_file_stat.stat.exists
+
+- name: Enable swap file
+  ansible.builtin.command:
+    cmd: "swapon {{ swap_file_path }}"
+  when: not swap_file_stat.stat.exists
+
+- name: Persist swap entry in fstab
+  ansible.builtin.mount:
+    name: none
+    src: "{{ swap_file_path }}"
+    fstype: swap
+    opts: sw
+    state: present

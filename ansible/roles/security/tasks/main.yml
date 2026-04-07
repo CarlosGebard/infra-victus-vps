@@ -1,0 +1,126 @@
+---
+- name: Install host security packages
+  ansible.builtin.apt:
+    name:
+      - fail2ban
+      - ufw
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Ensure admin user exists
+  ansible.builtin.user:
+    name: "{{ admin_user }}"
+    shell: /bin/bash
+    groups: sudo
+    append: true
+    create_home: true
+    password_lock: true
+    state: present
+
+- name: Ensure admin SSH directory exists
+  ansible.builtin.file:
+    path: "/home/{{ admin_user }}/.ssh"
+    state: directory
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    mode: "0700"
+
+- name: Check root authorized keys file
+  ansible.builtin.stat:
+    path: /root/.ssh/authorized_keys
+  register: root_authorized_keys_stat
+
+- name: Check admin authorized keys file
+  ansible.builtin.stat:
+    path: "/home/{{ admin_user }}/.ssh/authorized_keys"
+  register: admin_authorized_keys_stat
+
+- name: Seed admin authorized keys from root on first bootstrap
+  ansible.builtin.copy:
+    src: /root/.ssh/authorized_keys
+    dest: "/home/{{ admin_user }}/.ssh/authorized_keys"
+    remote_src: true
+    owner: "{{ admin_user }}"
+    group: "{{ admin_user }}"
+    mode: "0600"
+    force: false
+  when:
+    - bootstrap_copy_root_authorized_keys
+    - root_authorized_keys_stat.stat.exists
+    - not admin_authorized_keys_stat.stat.exists
+
+- name: Re-check admin authorized keys file
+  ansible.builtin.stat:
+    path: "/home/{{ admin_user }}/.ssh/authorized_keys"
+  register: admin_authorized_keys_final_stat
+
+- name: Ensure admin user can sudo without password for automation
+  ansible.builtin.copy:
+    dest: "/etc/sudoers.d/90-{{ admin_user }}"
+    content: "{{ admin_user }} ALL=(ALL) NOPASSWD:ALL\n"
+    owner: root
+    group: root
+    mode: "0440"
+    validate: /usr/sbin/visudo -cf %s
+
+- name: Refuse to disable root login without admin key access
+  ansible.builtin.assert:
+    that:
+      - admin_authorized_keys_final_stat.stat.exists
+    fail_msg: >-
+      Refusing to harden SSH because /home/{{ admin_user }}/.ssh/authorized_keys
+      does not exist. Seed the admin key first or allow bootstrap_copy_root_authorized_keys.
+
+- name: Install SSH hardening drop-in
+  ansible.builtin.copy:
+    src: sshd-hardening.conf
+    dest: /etc/ssh/sshd_config.d/99-codex-hardening.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart ssh
+
+- name: Install fail2ban jail for SSH
+  ansible.builtin.template:
+    src: jail-sshd.local.j2
+    dest: /etc/fail2ban/jail.d/sshd.local
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart fail2ban
+
+- name: Ensure fail2ban is enabled and running
+  ansible.builtin.service:
+    name: fail2ban
+    state: started
+    enabled: true
+
+- name: Set UFW default incoming policy
+  ansible.builtin.command: ufw default deny incoming
+  register: ufw_default_incoming
+  changed_when: "'Default incoming policy changed to' in ufw_default_incoming.stdout"
+
+- name: Set UFW default outgoing policy
+  ansible.builtin.command: ufw default allow outgoing
+  register: ufw_default_outgoing
+  changed_when: "'Default outgoing policy changed to' in ufw_default_outgoing.stdout"
+
+- name: Allow required TCP ports through UFW
+  ansible.builtin.command: "ufw allow {{ item }}/tcp"
+  loop: "{{ firewall_allowed_tcp_ports }}"
+  register: ufw_allow_rule
+  changed_when: >-
+    'Rule added' in ufw_allow_rule.stdout or
+    'Rules updated' in ufw_allow_rule.stdout
+
+- name: Check UFW status
+  ansible.builtin.command: ufw status
+  register: ufw_status
+  changed_when: false
+
+- name: Enable UFW
+  ansible.builtin.command: ufw --force enable
+  when: "'Status: active' not in ufw_status.stdout"
+  register: ufw_enable
+  changed_when: "'Firewall is active' in ufw_enable.stdout"

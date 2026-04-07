@@ -1,0 +1,35 @@
+# Local secrets and environment files
+*.env
+*.env.*
+!.env.example
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Ansible
+*.retry
+
+# macOS / editors
+.DS_Store
+.idea/
+.vscode/
+
+# Runtime artifacts
+tmp/
+dist/
+
+# Local-only repo guidance
+AGENTS.md
+PLANS.md
+legacy/
+
+.codex

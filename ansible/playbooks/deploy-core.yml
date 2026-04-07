@@ -1,0 +1,6 @@
+---
+- name: Deploy core services stack
+  hosts: vps
+  become: true
+  roles:
+    - role: deploy_core

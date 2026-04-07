@@ -1,0 +1,29 @@
+---
+- name: Ensure infrastructure directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+  loop:
+    - "{{ srv_root }}"
+    - "{{ srv_root }}/apps"
+    - "{{ srv_root }}/apps/core"
+    - "{{ srv_root }}/apps/core/nginx"
+    - "{{ srv_root }}/apps/core/nginx/conf.d"
+    - "{{ srv_root }}/apps/core/couchdb"
+    - "{{ srv_root }}/apps/core/couchdb/local.d"
+    - "{{ srv_root }}/data"
+    - "{{ srv_root }}/data/couchdb"
+    - "{{ srv_root }}/data/couchdb/data"
+    - "{{ srv_root }}/data/seaweed"
+    - "{{ srv_root }}/data/seaweed/data"
+    - "{{ srv_root }}/data/infisical"
+    - "{{ srv_root }}/data/infisical/postgres"
+    - "{{ srv_root }}/data/infisical/redis"
+    - "{{ srv_root }}/logs"
+    - "{{ srv_root }}/logs/nginx"
+    - "{{ srv_root }}/backups"
+    - "{{ srv_root }}/secrets"
+    - "{{ srv_root }}/secrets/bootstrap"

@@ -1,0 +1,10 @@
+---
+- name: Bootstrap production VPS
+  hosts: vps
+  become: true
+  roles:
+    - role: base
+    - role: security
+    - role: docker
+    - role: system
+    - role: directories

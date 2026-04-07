@@ -1,0 +1,139 @@
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: nginx
+    restart: unless-stopped
+    depends_on:
+      couchdb:
+        condition: service_healthy
+      seaweedfs:
+        condition: service_started
+      infisical:
+        condition: service_started
+    ports:
+      - "${NGINX_BIND_IP:-127.0.0.1}:${NGINX_HTTP_PORT:-8080}:80"
+    volumes:
+      - /srv/apps/core/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - /srv/apps/core/nginx/conf.d:/etc/nginx/conf.d:ro
+      - /srv/logs/nginx:/var/log/nginx
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/healthz || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - edge
+      - backend
+
+  couchdb:
+    image: couchdb:3.3
+    container_name: couchdb
+    restart: unless-stopped
+    environment:
+      COUCHDB_USER: ${COUCHDB_USER}
+      COUCHDB_PASSWORD: ${COUCHDB_PASSWORD}
+    volumes:
+      - /srv/data/couchdb/data:/opt/couchdb/data
+      - /srv/apps/core/couchdb/local.d:/opt/couchdb/etc/local.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://${COUCHDB_USER}:${COUCHDB_PASSWORD}@127.0.0.1:5984/_up >/dev/null"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 45s
+    networks:
+      - backend
+
+  seaweedfs:
+    image: chrislusf/seaweedfs:3.93
+    container_name: seaweedfs
+    restart: unless-stopped
+    command:
+      - server
+      - -dir=/data
+      - -s3
+      - -s3.port=8333
+      - -s3.config=/run/secrets/seaweed-s3.json
+    volumes:
+      - /srv/data/seaweed/data:/data
+      - /srv/secrets/bootstrap/seaweed-s3.json:/run/secrets/seaweed-s3.json:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:9333/cluster/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - backend
+
+  infisical-postgres:
+    image: postgres:16-alpine
+    container_name: infisical-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - /srv/data/infisical/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - backend
+
+  infisical-redis:
+    image: redis:7-alpine
+    container_name: infisical-redis
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --requirepass
+      - ${INFISICAL_REDIS_PASSWORD}
+    volumes:
+      - /srv/data/infisical/redis:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a ${INFISICAL_REDIS_PASSWORD} ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - backend
+
+  infisical:
+    image: ${INFISICAL_IMAGE:-infisical/infisical:latest}
+    container_name: infisical
+    restart: unless-stopped
+    depends_on:
+      infisical-postgres:
+        condition: service_healthy
+      infisical-redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      SITE_URL: ${INFISICAL_SITE_URL}
+      ENCRYPTION_KEY: ${INFISICAL_ENCRYPTION_KEY}
+      AUTH_SECRET: ${INFISICAL_AUTH_SECRET}
+      DB_CONNECTION_URI: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@infisical-postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://:${INFISICAL_REDIS_PASSWORD}@infisical-redis:6379
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/api/status || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 10
+      start_period: 45s
+    networks:
+      - backend
+
+networks:
+  edge:
+    driver: bridge
+  backend:
+    driver: bridge

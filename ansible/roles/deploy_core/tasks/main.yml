@@ -1,0 +1,88 @@
+---
+- name: Ensure application directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+  loop:
+    - "{{ srv_root }}/apps/core"
+    - "{{ srv_root }}/apps/core/nginx"
+    - "{{ srv_root }}/apps/core/nginx/conf.d"
+    - "{{ srv_root }}/apps/core/couchdb"
+    - "{{ srv_root }}/apps/core/couchdb/local.d"
+
+- name: Copy core stack compose file
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../compose/stacks/core/docker-compose.yml"
+    dest: "{{ srv_root }}/apps/core/docker-compose.yml"
+    owner: root
+    group: root
+    mode: "0640"
+
+- name: Copy NGINX main config
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../compose/configs/nginx/nginx.conf"
+    dest: "{{ srv_root }}/apps/core/nginx/nginx.conf"
+    owner: root
+    group: root
+    mode: "0640"
+
+- name: Copy NGINX virtual host config
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../compose/configs/nginx/conf.d/default.conf"
+    dest: "{{ srv_root }}/apps/core/nginx/conf.d/default.conf"
+    owner: root
+    group: root
+    mode: "0640"
+
+- name: Copy CouchDB local config
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../compose/configs/couchdb/local.d/local.ini"
+    dest: "{{ srv_root }}/apps/core/couchdb/local.d/local.ini"
+    owner: root
+    group: root
+    mode: "0640"
+
+- name: Copy environment example for operator reference
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../compose/env/core.env.example"
+    dest: "{{ srv_root }}/apps/core/.env.example"
+    owner: root
+    group: root
+    mode: "0640"
+
+- name: Check whether bootstrap environment file exists
+  ansible.builtin.stat:
+    path: "{{ bootstrap_env_path }}"
+  register: bootstrap_env_stat
+
+- name: Check whether Seaweed S3 config file exists
+  ansible.builtin.stat:
+    path: "{{ seaweed_s3_config_path }}"
+  register: seaweed_s3_stat
+
+- name: Stop deployment when bootstrap secret files are missing
+  ansible.builtin.assert:
+    that:
+      - bootstrap_env_stat.stat.exists
+      - seaweed_s3_stat.stat.exists
+    fail_msg: "Missing bootstrap secret material under /srv/secrets/bootstrap. Create core.env and seaweed-s3.json before deploy."
+
+- name: Link active environment file into the stack directory
+  ansible.builtin.file:
+    src: "{{ bootstrap_env_path }}"
+    dest: "{{ srv_root }}/apps/core/.env"
+    state: link
+
+- name: Validate rendered Compose configuration
+  ansible.builtin.command:
+    cmd: docker compose --env-file {{ bootstrap_env_path }} -f {{ srv_root }}/apps/core/docker-compose.yml config
+  changed_when: false
+
+- name: Deploy the core services stack
+  ansible.builtin.command:
+    cmd: docker compose --env-file {{ bootstrap_env_path }} -f {{ srv_root }}/apps/core/docker-compose.yml up -d
+  register: deploy_core_up
+  changed_when: "'Started' in deploy_core_up.stdout or 'Recreated' in deploy_core_up.stdout or 'Creating' in deploy_core_up.stdout"

@@ -1,0 +1,52 @@
+srv_root: /srv
+compose_project_name: core
+bootstrap_env_path: /srv/secrets/bootstrap/core.env
+seaweed_s3_config_path: /srv/secrets/bootstrap/seaweed-s3.json
+private_access_only: true
+admin_user: carlos
+bootstrap_copy_root_authorized_keys: true
+ssh_port: 22
+firewall_allowed_tcp_ports:
+  - 22
+fail2ban_sshd_maxretry: 5
+fail2ban_sshd_findtime: 10m
+fail2ban_sshd_bantime: 1h
+ubuntu_release: "noble"
+install_dev_packages: true
+swap_file_path: /swapfile
+swap_file_size_mb: 2048
+docker_apt_arch_map:
+  x86_64: amd64
+  aarch64: arm64
+base_packages:
+  - acl
+  - apt-transport-https
+  - ca-certificates
+  - cloud-guest-utils
+  - cloud-init
+  - curl
+  - gnupg
+  - lsb-release
+  - openssh-server
+  - python3
+  - qemu-guest-agent
+  - rsync
+  - software-properties-common
+  - sudo
+  - unattended-upgrades
+  - wget
+security_packages:
+  - fail2ban
+  - ufw
+ops_packages:
+  - htop
+  - jq
+  - lsof
+  - mtr-tiny
+  - netcat-openbsd
+  - strace
+  - tcpdump
+dev_packages:
+  - git
+  - neovim
+  - tmux

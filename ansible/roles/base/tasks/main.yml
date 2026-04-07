@@ -1,0 +1,24 @@
+---
+- name: Install baseline operating system packages
+  ansible.builtin.apt:
+    name: "{{ base_packages + security_packages + ops_packages + (dev_packages if install_dev_packages else []) }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Enable qemu guest agent
+  ansible.builtin.service:
+    name: qemu-guest-agent
+    state: started
+    enabled: true
+
+- name: Enable unattended upgrades service
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+      APT::Periodic::AutocleanInterval "7";

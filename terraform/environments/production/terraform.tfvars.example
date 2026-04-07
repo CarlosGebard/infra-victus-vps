@@ -1,0 +1,9 @@
+hcloud_token       = "replace-me"
+ssh_key_names      = ["main_ed25519"]
+ssh_allowed_cidrs  = ["0.0.0.0/0"]
+enable_public_http = false
+
+labels = {
+  project = "infra-macro-vps"
+  env     = "production"
+}
