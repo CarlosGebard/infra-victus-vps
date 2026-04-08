@@ -27,7 +27,7 @@
   when: not swap_file_stat.stat.exists
 
 - name: Persist swap entry in fstab
-  ansible.builtin.mount:
+  ansible.posix.mount:
     name: none
     src: "{{ swap_file_path }}"
     fstype: swap
