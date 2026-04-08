@@ -2,6 +2,8 @@
 *.env
 *.env.*
 !.env.example
+!compose/env/*.env.example
+!secrets/bootstrap/*.env.example
 !secrets/bootstrap/*.enc.env
 
 # Terraform

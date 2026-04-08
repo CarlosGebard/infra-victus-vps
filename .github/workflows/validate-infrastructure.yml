@@ -29,7 +29,7 @@ jobs:
         run: python -m pip install --upgrade pip ansible-core
 
       - name: Install Ansible collections
-        run: ansible-galaxy collection install -r ansible/requirements.yml
+        run: ansible-galaxy collection install -p ./.ansible/collections -r ansible/requirements.yml
 
       - name: Run CI-safe infrastructure validation
         env:

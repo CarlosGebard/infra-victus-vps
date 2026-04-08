@@ -12,7 +12,12 @@ fail_if_matches() {
   local pattern="$2"
   shift 2
 
-  if rg -n "${pattern}" "$@"; then
+  local search_cmd=(rg -n)
+  if ! command -v rg >/dev/null 2>&1; then
+    search_cmd=(grep -RInE)
+  fi
+
+  if "${search_cmd[@]}" "${pattern}" "$@"; then
     echo "policy check failed: ${description}" >&2
     FAILED=1
   fi

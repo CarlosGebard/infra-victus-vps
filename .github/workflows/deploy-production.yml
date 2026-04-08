@@ -51,7 +51,7 @@ jobs:
         run: python -m pip install --upgrade pip ansible-core
 
       - name: Install Ansible collections
-        run: ansible-galaxy collection install -r ansible/requirements.yml
+        run: ansible-galaxy collection install -p ./.ansible/collections -r ansible/requirements.yml
 
       - name: Validate required runtime inputs
         run: |
@@ -74,6 +74,7 @@ jobs:
           [defaults]
           inventory = .github/production.inventory.yml
           roles_path = ansible/roles
+          collections_path = ./.ansible/collections:~/.ansible/collections:/usr/share/ansible/collections
           retry_files_enabled = False
           host_key_checking = True
           EOF
