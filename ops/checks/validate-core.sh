@@ -10,6 +10,11 @@ if ! command -v docker >/dev/null 2>&1; then
 fi
 
 docker compose \
+  --env-file "${ROOT_DIR}/secrets/bootstrap/infisical.env.example" \
+  -f "${ROOT_DIR}/compose/stacks/infisical-bootstrap/docker-compose.yml" \
+  config >/dev/null
+
+docker compose \
   --env-file "${ROOT_DIR}/compose/env/core.env.example" \
   -f "${ROOT_DIR}/compose/stacks/core/docker-compose.yml" \
   config >/dev/null

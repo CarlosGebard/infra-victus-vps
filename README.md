@@ -41,14 +41,15 @@ The target operating model is:
 
 ## Current status
 
-This repository has been restructured to separate target infrastructure code from legacy operational artifacts.
+The repository now models a phased production rollout:
 
-The next implementation phase should define:
+- `ansible/playbooks/bootstrap.yml` hardens the host, installs Docker, and joins Tailscale
+- `ansible/playbooks/deploy-infisical-bootstrap.yml` starts only Infisical, PostgreSQL, and Redis with minimal bootstrap secrets
+- `.github/workflows/deploy-production.yml` fetches deploy secrets from Infisical at runtime using GitHub OIDC and deploys the remaining stack
 
-- Terraform provider and production environment
-- Ansible inventory, base roles, and bootstrap playbooks
-- Docker Compose stack for NGINX, CouchDB, SeaweedFS, and Infisical
-- Backup, restore, and migration runbooks
+This keeps long-lived deployment secrets out of GitHub while still allowing GitHub Actions to perform Ansible-based remote deploys.
+
+Terraform remains in the repository for future reprovisioning, but it is not part of the current operational workflow because the production VPS already exists.
 
 ## Legacy material
 

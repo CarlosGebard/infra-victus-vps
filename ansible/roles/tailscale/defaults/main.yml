@@ -1,0 +1,8 @@
+---
+tailscale_enabled: true
+tailscale_auth_key: ""
+tailscale_advertise_tags: []
+tailscale_enable_ssh: false
+tailscale_hostname: ""
+tailscale_args_extra: ""
+tailscale_track: stable

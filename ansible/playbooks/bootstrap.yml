@@ -5,6 +5,8 @@
   roles:
     - role: base
     - role: security
-    - role: docker
     - role: system
+    - role: tailscale
+    - role: docker
     - role: directories
+    - role: alloy

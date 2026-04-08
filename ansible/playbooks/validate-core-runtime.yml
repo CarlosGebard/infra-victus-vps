@@ -1,0 +1,6 @@
+---
+- name: Validate core runtime after deploy
+  hosts: vps
+  become: true
+  roles:
+    - role: validate_core_runtime

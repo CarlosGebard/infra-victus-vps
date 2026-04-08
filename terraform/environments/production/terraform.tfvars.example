@@ -1,4 +1,5 @@
 hcloud_token       = "replace-me"
+server_type        = "cx33"
 ssh_key_names      = ["main_ed25519"]
 ssh_allowed_cidrs  = ["0.0.0.0/0"]
 enable_public_http = false

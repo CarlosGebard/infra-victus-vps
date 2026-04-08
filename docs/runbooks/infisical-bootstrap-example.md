@@ -2,18 +2,14 @@
 
 ## Purpose
 
-Show the intended bootstrap model for this repository without storing any real secret values in Git.
+Show the intended phase-1 bootstrap model for this repository without storing any real secret values in Git.
 
-The bootstrap exists only to bring up Infisical and the services it depends on. After Infisical is running, application secrets should be managed from there instead of staying in bootstrap files.
+The bootstrap exists only to bring up Infisical and the services it depends on. After Infisical is running, runtime deploy secrets should be managed from there instead of staying in bootstrap files.
 
 ## Target Bootstrap Scope
 
 The bootstrap should include only what Infisical needs to start:
 
-- `INFISICAL_SITE_URL`
-- `INFISICAL_IMAGE`
-- `POSTGRES_DB`
-- `POSTGRES_USER`
 - `POSTGRES_PASSWORD`
 - `INFISICAL_REDIS_PASSWORD`
 - `INFISICAL_ENCRYPTION_KEY`
@@ -21,12 +17,15 @@ The bootstrap should include only what Infisical needs to start:
 
 These values are shown as placeholders in:
 
-- `compose/env/infisical-bootstrap.env.example`
+- `secrets/bootstrap/infisical.env.example`
+- `secrets/bootstrap/infisical.enc.env`
 
 ## What Should Not Live In Bootstrap Long-Term
 
-These values should move out of bootstrap and into Infisical-managed secrets:
+These values should live in Infisical-managed runtime secrets instead of bootstrap:
 
+- deploy SSH material for GitHub Actions
+- host connection values such as `PROD_HOST` and `PROD_SSH_USER`
 - CouchDB credentials
 - SeaweedFS S3 credentials
 - future application API keys
@@ -40,18 +39,25 @@ These values should move out of bootstrap and into Infisical-managed secrets:
 sudo install -d -m 700 /srv/secrets /srv/secrets/bootstrap
 ```
 
-2. Create the bootstrap env file from the example:
+2. Create the encrypted bootstrap env file from the example:
 
 ```bash
-sudo cp compose/env/infisical-bootstrap.env.example /srv/secrets/bootstrap/infisical-bootstrap.env
-sudo chmod 600 /srv/secrets/bootstrap/infisical-bootstrap.env
+cp secrets/bootstrap/infisical.env.example /tmp/infisical.env
+$EDITOR /tmp/infisical.env
+sops --encrypt --input-type dotenv --output-type dotenv /tmp/infisical.env > secrets/bootstrap/infisical.enc.env
+rm /tmp/infisical.env
 ```
 
-3. Replace all placeholder values with real secrets.
+3. Install the decrypted file on the VPS:
 
-4. Start the minimal Infisical stack.
+```bash
+sops --decrypt --input-type dotenv --output-type dotenv secrets/bootstrap/infisical.enc.env | \
+ssh hetzner-main 'sudo install -d -m 700 /srv/secrets/bootstrap && sudo tee /srv/secrets/bootstrap/infisical.env >/dev/null && sudo chmod 600 /srv/secrets/bootstrap/infisical.env'
+```
 
-5. Store the rest of the infrastructure and application secrets inside Infisical.
+4. Start the minimal Infisical stack with `ansible/playbooks/deploy-infisical-bootstrap.yml`.
+
+5. Store the rest of the infrastructure and deployment secrets inside Infisical.
 
 6. Reduce or retire bootstrap material once Infisical becomes the source of truth.
 

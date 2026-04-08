@@ -8,64 +8,56 @@ This file is documentation only. No secret values belong here.
 
 ## Secret Storage Model
 
-Secrets are intentionally split across three locations:
+Secrets are intentionally split across four locations:
 
-1. GitHub Actions `production` environment
-   Used by CI/CD workflows that need cloud or SSH access.
+1. GitHub Actions `production` environment variables
+   Used only for non-secret Infisical connection metadata and deploy approvals.
 2. Local untracked files
    Used for workstation-only Terraform or operator workflows.
 3. VPS bootstrap secret files
-   Used by the runtime stack during initial deployment before secret management is fully migrated into Infisical.
+   Used only to start self-hosted Infisical before runtime deploy secrets move under Infisical management.
+4. Infisical-managed runtime secrets
+   Used by GitHub Actions to fetch deploy-time credentials and generate runtime files on demand.
 
-## GitHub Actions Secrets
+## GitHub Actions Variables
 
 Store these in:
 
-- Repository `Settings -> Environments -> production -> Environment secrets`
+- Repository `Settings -> Environments -> production -> Variables`
 
-For the first production workflow, GitHub Actions should contain only infrastructure and access secrets.
+GitHub Actions should not store long-lived deploy secrets for the phase-2 deploy workflow.
 
-The minimum approved set is:
+The minimum approved variable set is:
 
-- `HCLOUD_TOKEN`
-- `PROD_HOST`
-- `PROD_SSH_USER`
-- `PROD_SSH_PRIVATE_KEY`
-- `PROD_SSH_KNOWN_HOSTS`
+- `INFISICAL_DOMAIN`
+- `INFISICAL_IDENTITY_ID`
+- `INFISICAL_PROJECT_SLUG`
+- `INFISICAL_ENV_SLUG`
 
-### HCLOUD_TOKEN
+### INFISICAL_DOMAIN
 
-- Purpose: authenticate Terraform against Hetzner Cloud
-- Used by: Terraform plan/apply workflow
-- Storage: GitHub `production` environment secret
+- Purpose: base URL for the self-hosted Infisical instance
+- Used by: GitHub Actions deploy workflow
+- Storage: GitHub `production` environment variable
 
-### PROD_HOST
+### INFISICAL_IDENTITY_ID
 
-- Purpose: target VPS hostname or public IP for SSH and Ansible
-- Used by: deploy workflow
-- Storage: GitHub `production` environment secret
+- Purpose: public machine identity identifier used for OIDC login
+- Used by: GitHub Actions deploy workflow
+- Storage: GitHub `production` environment variable
+- Notes: this is not a secret
 
-### PROD_SSH_USER
+### INFISICAL_PROJECT_SLUG
 
-- Purpose: SSH user for GitHub Actions deployments
-- Used by: deploy workflow
-- Storage: GitHub `production` environment secret
+- Purpose: Infisical project slug used by the workflow
+- Used by: GitHub Actions deploy workflow
+- Storage: GitHub `production` environment variable
 
-### PROD_SSH_PRIVATE_KEY
+### INFISICAL_ENV_SLUG
 
-- Purpose: private SSH key used by GitHub Actions to connect to the VPS
-- Used by: deploy workflow
-- Storage: GitHub `production` environment secret
-- Notes: use a dedicated deploy key, not your personal workstation key
-
-### PROD_SSH_KNOWN_HOSTS
-
-- Purpose: pinned SSH host key material for the VPS
-- Used by: deploy workflow
-- Storage: GitHub `production` environment secret
-- Notes: generate with `ssh-keyscan -H <host>`
-
-Application bootstrap secrets are intentionally not stored in GitHub Actions for this phase.
+- Purpose: Infisical environment slug used by the workflow
+- Used by: GitHub Actions deploy workflow
+- Storage: GitHub `production` environment variable
 
 ## Local-Only Secrets
 
@@ -80,134 +72,168 @@ Store these in untracked local files. Never commit them.
   - `ssh_allowed_cidrs`
   - `enable_public_http`
 - Storage: local untracked file
-- Notes: already covered by `.gitignore` expectations
+- Notes:
+  - already covered by `.gitignore` expectations
+  - not used in the current operational workflow while the VPS already exists
 
 ## VPS Bootstrap Secrets
 
 Store these on the server under:
 
-- `/srv/secrets/bootstrap/core.env`
-- `/srv/secrets/bootstrap/seaweed-s3.json`
+- `/srv/secrets/bootstrap/infisical.env`
 
-These are the runtime bootstrap inputs consumed by Docker Compose before application secrets are migrated into Infisical.
+These are the minimum bootstrap inputs consumed before Infisical becomes the runtime source of truth.
 
-For the current deployment model, these values stay on the VPS and are not mirrored into GitHub Actions.
+For the target deployment model, these values stay on the VPS only long enough to start Infisical.
 
 The intended long-term model is a narrower bootstrap that exists only to start Infisical. See:
 
-- `compose/env/infisical-bootstrap.env.example`
+- `secrets/bootstrap/infisical.env.example`
+- `secrets/bootstrap/infisical.enc.env`
 - `docs/runbooks/infisical-bootstrap-example.md`
 
-### core.env variables
-
-#### NGINX_BIND_IP
-
-- Purpose: host bind address for NGINX
-- Used by: Docker Compose
-- Storage: `/srv/secrets/bootstrap/core.env`
-- Default intent: `127.0.0.1`
-
-#### NGINX_HTTP_PORT
-
-- Purpose: host port for NGINX
-- Used by: Docker Compose
-- Storage: `/srv/secrets/bootstrap/core.env`
-- Default intent: `8080`
-
-#### INFISICAL_SITE_URL
-
-- Purpose: base URL used by Infisical
-- Used by: Infisical container
-- Storage: `/srv/secrets/bootstrap/core.env`
-
-#### COUCHDB_USER
-
-- Purpose: CouchDB admin username
-- Used by: CouchDB container and healthcheck
-- Storage: `/srv/secrets/bootstrap/core.env`
-
-#### COUCHDB_PASSWORD
-
-- Purpose: CouchDB admin password
-- Used by: CouchDB container and healthcheck
-- Storage: `/srv/secrets/bootstrap/core.env`
-
-#### POSTGRES_DB
-
-- Purpose: PostgreSQL database name for Infisical
-- Used by: PostgreSQL and Infisical containers
-- Storage: `/srv/secrets/bootstrap/core.env`
-
-#### POSTGRES_USER
-
-- Purpose: PostgreSQL username for Infisical
-- Used by: PostgreSQL and Infisical containers
-- Storage: `/srv/secrets/bootstrap/core.env`
+### infisical.env variables
 
 #### POSTGRES_PASSWORD
 
 - Purpose: PostgreSQL password for Infisical
 - Used by: PostgreSQL and Infisical containers
-- Storage: `/srv/secrets/bootstrap/core.env`
+- Storage: `/srv/secrets/bootstrap/infisical.env`
 
 #### INFISICAL_REDIS_PASSWORD
 
 - Purpose: Redis password for Infisical
 - Used by: Redis and Infisical containers
-- Storage: `/srv/secrets/bootstrap/core.env`
+- Storage: `/srv/secrets/bootstrap/infisical.env`
 
 #### INFISICAL_ENCRYPTION_KEY
 
 - Purpose: application encryption key for Infisical
 - Used by: Infisical container
-- Storage: `/srv/secrets/bootstrap/core.env`
+- Storage: `/srv/secrets/bootstrap/infisical.env`
 
 #### INFISICAL_AUTH_SECRET
 
 - Purpose: application auth secret for Infisical
 - Used by: Infisical container
-- Storage: `/srv/secrets/bootstrap/core.env`
+- Storage: `/srv/secrets/bootstrap/infisical.env`
 
-#### INFISICAL_IMAGE
+## Infisical Runtime Secrets
 
-- Purpose: override image tag for Infisical
-- Used by: Docker Compose
-- Storage: `/srv/secrets/bootstrap/core.env`
-- Secret class: not sensitive, but kept with bootstrap runtime config for operational simplicity
+These values should be stored in Infisical and fetched by GitHub Actions at runtime through OIDC.
 
-### seaweed-s3.json
+#### COUCHDB_PASSWORD
+
+- Purpose: CouchDB admin password
+- Used by: CouchDB container and healthcheck
+- Storage: Infisical runtime secret
+
+#### GRAFANA_ADMIN_PASSWORD
+
+- Purpose: admin password for Grafana
+- Used by: Grafana container
+- Storage: Infisical runtime secret
+
+#### PROD_HOST
+
+- Purpose: target VPS hostname or public IP for SSH and Ansible
+- Used by: GitHub Actions deploy workflow
+- Storage: Infisical runtime secret
+
+#### PROD_SSH_USER
+
+- Purpose: SSH user for GitHub Actions deployments
+- Used by: GitHub Actions deploy workflow
+- Storage: Infisical runtime secret
+
+#### PROD_SSH_PRIVATE_KEY
+
+- Purpose: private SSH key used by GitHub Actions to connect to the VPS
+- Used by: GitHub Actions deploy workflow
+- Storage: Infisical runtime secret
+
+#### PROD_SSH_KNOWN_HOSTS
+
+- Purpose: pinned SSH host key material for the VPS
+- Used by: GitHub Actions deploy workflow
+- Storage: Infisical runtime secret
+
+#### SEAWEED_S3_ACCESS_KEY
+
+- Purpose: SeaweedFS S3 access key used to render the runtime config
+- Used by: GitHub Actions deploy workflow
+- Storage: Infisical runtime secret
+
+#### SEAWEED_S3_SECRET_KEY
+
+- Purpose: SeaweedFS S3 secret key used to render the runtime config
+- Used by: GitHub Actions deploy workflow
+- Storage: Infisical runtime secret
+
+### Runtime files written on the VPS
+
+GitHub Actions stages these files during deploy:
+
+- `/srv/secrets/runtime/core.env`
+- `/srv/secrets/runtime/seaweed-s3.json`
+
+### seaweed-s3.json structure
 
 - Purpose: SeaweedFS S3 identity and access credentials
 - Used by: SeaweedFS container
-- Storage: `/srv/secrets/bootstrap/seaweed-s3.json`
+- Storage: rendered to `/srv/secrets/runtime/seaweed-s3.json` during deploy
 
 ## Pending Values Checklist
 
 This section tracks the values that still need to be set before a real production deploy can succeed.
 
-### GitHub `production` environment
+### GitHub `production` environment variables
 
-These should already exist, but keep this list as the minimum deploy inventory:
+These should already exist before the OIDC-based workflow can authenticate:
 
-#### `HCLOUD_TOKEN`
+#### `INFISICAL_DOMAIN`
 
-- Meaning: Hetzner Cloud API token used by Terraform
+- Meaning: base URL for the self-hosted Infisical instance
 
-#### `PROD_HOST`
+#### `INFISICAL_IDENTITY_ID`
 
-- Meaning: VPS hostname or IP used by SSH and Ansible
+- Meaning: machine identity identifier configured for GitHub OIDC
 
-#### `PROD_SSH_USER`
+#### `INFISICAL_PROJECT_SLUG`
 
-- Meaning: remote SSH user used by GitHub Actions
+- Meaning: Infisical project slug used by the workflow
 
-#### `PROD_SSH_PRIVATE_KEY`
+#### `INFISICAL_ENV_SLUG`
 
-- Meaning: private key for SSH deploy access from GitHub Actions
+- Meaning: Infisical environment slug used by the workflow
 
-#### `PROD_SSH_KNOWN_HOSTS`
+### VPS file: `/srv/secrets/bootstrap/infisical.env`
 
-- Meaning: pinned SSH host key entry for the production VPS
+These are still placeholders and must be replaced before the Infisical bootstrap deploy can succeed:
+
+#### `POSTGRES_PASSWORD`
+
+- Meaning: PostgreSQL password used by Infisical
+
+#### `INFISICAL_REDIS_PASSWORD`
+
+- Meaning: Redis password used by Infisical
+
+#### `INFISICAL_ENCRYPTION_KEY`
+
+- Meaning: encryption key used by Infisical for protected data
+
+#### `INFISICAL_AUTH_SECRET`
+
+- Meaning: signing/authentication secret used by Infisical
+
+### Local shell for first bootstrap
+
+#### `TAILSCALE_AUTH_KEY`
+
+- Meaning: auth key used to join the VPS to the tailnet during the first Ansible bootstrap
+- Storage: local shell environment when running `ansible/playbooks/bootstrap.yml`
+- Current usage: required for first bootstrap when the node is not yet connected to Tailscale
 
 ### Local-only file: `terraform/environments/production/terraform.tfvars`
 
@@ -228,31 +254,17 @@ These should already exist, but keep this list as the minimum deploy inventory:
 - Meaning: whether Terraform should open ports `80` and `443`
 - Current intended value: `false`
 
-### VPS file: `/srv/secrets/bootstrap/core.env`
+### Infisical runtime secrets
 
-These are still placeholders and must be replaced before deploy:
-
-#### `COUCHDB_USER`
-
-- Meaning: admin username for CouchDB
+These must exist in Infisical before the GitHub Actions deploy can succeed:
 
 #### `COUCHDB_PASSWORD`
 
 - Meaning: admin password for CouchDB
 
-#### `POSTGRES_DB`
-
-- Meaning: database name used by Infisical
-- Current intended value: `infisical`
-
-#### `POSTGRES_USER`
-
-- Meaning: PostgreSQL username used by Infisical
-- Current intended value: `infisical`
-
 #### `POSTGRES_PASSWORD`
 
-- Meaning: PostgreSQL password used by Infisical
+- Meaning: PostgreSQL password used by Infisical and retained for the full stack
 
 #### `INFISICAL_REDIS_PASSWORD`
 
@@ -266,37 +278,33 @@ These are still placeholders and must be replaced before deploy:
 
 - Meaning: signing/authentication secret used by Infisical
 
-#### `INFISICAL_SITE_URL`
+#### `GRAFANA_ADMIN_PASSWORD`
 
-- Meaning: base URL Infisical should use for callbacks and links
-- Current intended bootstrap value: `http://127.0.0.1:8080/infisical`
+- Meaning: admin password for Grafana
 
-#### `NGINX_BIND_IP`
+#### `PROD_HOST`
 
-- Meaning: host bind IP for the NGINX entrypoint
-- Current intended bootstrap value: `127.0.0.1`
+- Meaning: VPS hostname or IP used by SSH and Ansible
 
-#### `NGINX_HTTP_PORT`
+#### `PROD_SSH_USER`
 
-- Meaning: host bind port for the NGINX entrypoint
-- Current intended bootstrap value: `8080`
+- Meaning: remote SSH user used by GitHub Actions
 
-#### `INFISICAL_IMAGE`
+#### `PROD_SSH_PRIVATE_KEY`
 
-- Meaning: image tag override for Infisical
-- Current intended value: `infisical/infisical:latest`
+- Meaning: private key for SSH deploy access from GitHub Actions
 
-### VPS file: `/srv/secrets/bootstrap/seaweed-s3.json`
+#### `PROD_SSH_KNOWN_HOSTS`
 
-These are still placeholders and must be replaced before deploy:
+- Meaning: pinned SSH host key entry for the production VPS
 
-#### `identities[0].credentials[0].accessKey`
+#### `SEAWEED_S3_ACCESS_KEY`
 
-- Meaning: SeaweedFS S3 access key for the bootstrap admin identity
+- Meaning: SeaweedFS S3 access key for the runtime admin identity
 
-#### `identities[0].credentials[0].secretKey`
+#### `SEAWEED_S3_SECRET_KEY`
 
-- Meaning: SeaweedFS S3 secret key for the bootstrap admin identity
+- Meaning: SeaweedFS S3 secret key for the runtime admin identity
 
 ## Legacy Secrets
 
@@ -317,14 +325,14 @@ Rules:
 
 After Infisical is operational, the target model is:
 
-- GitHub keeps only deployment and infrastructure access secrets
-- VPS keeps only minimum bootstrap material
-- application-level secrets move into Infisical
+- GitHub keeps only non-secret OIDC connection metadata and approval gates
+- VPS keeps only minimum bootstrap material plus runtime files staged during deploy
+- application-level and deploy credentials live in Infisical
 
 ## Operational Rules
 
 - Never commit secret values to Git
 - Never place production secrets in example files
-- Prefer GitHub Environment secrets over repository-wide secrets for deploy access
+- Prefer GitHub Environment variables for non-secret deploy metadata
 - Use a dedicated SSH key for CI/CD
 - Rotate any secret copied from legacy assets

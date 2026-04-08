@@ -49,14 +49,14 @@ After the cold restore validates successfully, rotate credentials and verify app
    - request sizing
    - CORS policy
 3. Do not reuse `docker.ini` admin hashes directly unless you explicitly want to preserve that admin.
-4. Define the new `COUCHDB_USER` and `COUCHDB_PASSWORD` in `/srv/secrets/bootstrap/core.env`.
+4. Define the new `COUCHDB_USER` and `COUCHDB_PASSWORD` in `/srv/secrets/runtime/core.env`.
 
 ## 4. Cold Restore
 
 1. Stop the target CouchDB container:
 
 ```bash
-docker compose --env-file /srv/secrets/bootstrap/core.env -f /srv/apps/core/docker-compose.yml stop couchdb
+docker compose --env-file /srv/secrets/runtime/core.env -f /srv/apps/core/docker-compose.yml stop couchdb
 ```
 
 2. Remove current target data contents only after confirming the backup from phase 2 exists.

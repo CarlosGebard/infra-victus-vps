@@ -1,7 +1,10 @@
 srv_root: /srv
 compose_project_name: core
-bootstrap_env_path: /srv/secrets/bootstrap/core.env
-seaweed_s3_config_path: /srv/secrets/bootstrap/seaweed-s3.json
+infisical_bootstrap_env_path: /srv/secrets/bootstrap/infisical.env
+runtime_env_path: /srv/secrets/runtime/core.env
+runtime_seaweed_s3_config_path: /srv/secrets/runtime/seaweed-s3.json
+runtime_env_source_file: "{{ lookup('ansible.builtin.env', 'RUNTIME_ENV_SOURCE_FILE') | default('', true) }}"
+runtime_seaweed_s3_source_file: "{{ lookup('ansible.builtin.env', 'RUNTIME_SEAWEED_S3_SOURCE_FILE') | default('', true) }}"
 private_access_only: true
 admin_user: carlos
 bootstrap_copy_root_authorized_keys: true
@@ -18,6 +21,19 @@ swap_file_size_mb: 2048
 docker_apt_arch_map:
   x86_64: amd64
   aarch64: arm64
+grafana_apt_arch_map:
+  x86_64: amd64
+  aarch64: arm64
+alloy_http_listen_addr: 0.0.0.0:12345
+alloy_storage_path: /var/lib/alloy/data
+alloy_loki_write_url: http://127.0.0.1:3100/loki/api/v1/push
+tailscale_enabled: true
+tailscale_auth_key: "{{ lookup('ansible.builtin.env', 'TAILSCALE_AUTH_KEY') | default('', true) }}"
+tailscale_advertise_tags:
+  - tag:vps
+tailscale_enable_ssh: false
+tailscale_hostname: infra-victus-vps
+tailscale_args_extra: ""
 base_packages:
   - acl
   - apt-transport-https

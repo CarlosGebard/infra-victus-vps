@@ -1,0 +1,125 @@
+---
+- name: Check whether runtime environment file exists
+  ansible.builtin.stat:
+    path: "{{ runtime_env_path }}"
+  register: runtime_env_stat
+
+- name: Stop runtime validation when the runtime env file is missing
+  ansible.builtin.assert:
+    that:
+      - runtime_env_stat.stat.exists
+    fail_msg: >-
+      Missing runtime environment file at {{ runtime_env_path }}.
+      Deploy the core stack before running runtime validation.
+
+- name: List running services in the core stack
+  ansible.builtin.command:
+    cmd: docker compose --env-file {{ runtime_env_path }} -f {{ srv_root }}/apps/core/docker-compose.yml ps --services --status running
+  register: core_running_services
+  changed_when: false
+
+- name: Assert that all expected core services are running
+  ansible.builtin.assert:
+    that:
+      - expected_core_services | difference(core_running_services.stdout_lines) | length == 0
+    fail_msg: >-
+      Missing running services: {{
+        expected_core_services | difference(core_running_services.stdout_lines)
+      }}
+  vars:
+    expected_core_services:
+      - nginx
+      - couchdb
+      - seaweedfs
+      - infisical-postgres
+      - infisical-redis
+      - infisical
+      - loki
+      - prometheus
+      - grafana
+
+- name: Check container health status
+  ansible.builtin.command:
+    cmd: docker inspect --format={{ "{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}" }} {{ item }}
+  loop:
+    - nginx
+    - couchdb
+    - seaweedfs
+    - infisical-postgres
+    - infisical-redis
+    - infisical
+    - loki
+    - prometheus
+    - grafana
+  register: core_container_health
+  changed_when: false
+
+- name: Assert that all core containers are healthy
+  ansible.builtin.assert:
+    that:
+      - item.stdout == "healthy"
+    fail_msg: "Container {{ item.item }} is not healthy: {{ item.stdout }}"
+  loop: "{{ core_container_health.results }}"
+
+- name: Check NGINX health endpoint
+  ansible.builtin.command:
+    cmd: curl -fsS http://127.0.0.1:8080/healthz
+  register: nginx_health
+  changed_when: false
+
+- name: Check Infisical routed status endpoint
+  ansible.builtin.command:
+    cmd: curl -fsS http://127.0.0.1:8080/infisical/api/status
+  register: infisical_status
+  changed_when: false
+
+- name: Check SeaweedFS master routed endpoint
+  ansible.builtin.command:
+    cmd: curl -fsS http://127.0.0.1:8080/seaweed/master/cluster/status
+  register: seaweed_status
+  changed_when: false
+
+- name: Check Loki ready endpoint
+  ansible.builtin.command:
+    cmd: curl -fsS http://127.0.0.1:3100/ready
+  register: loki_ready
+  changed_when: false
+
+- name: Check Prometheus ready endpoint
+  ansible.builtin.command:
+    cmd: curl -fsS http://127.0.0.1:9090/-/ready
+  register: prometheus_ready
+  changed_when: false
+
+- name: Check Grafana health endpoint
+  ansible.builtin.command:
+    cmd: curl -fsS http://127.0.0.1:3000/api/health
+  register: grafana_health
+  changed_when: false
+
+- name: Check CouchDB routed endpoint with runtime credentials
+  ansible.builtin.shell: |
+    set -a
+    . "{{ runtime_env_path }}"
+    curl -fsS "http://${COUCHDB_USER:-admin}:${COUCHDB_PASSWORD}@127.0.0.1:8080/couchdb/_up" >/dev/null
+  args:
+    executable: /bin/bash
+  changed_when: false
+
+- name: Check PostgreSQL readiness inside the container
+  ansible.builtin.shell: |
+    set -a
+    . "{{ runtime_env_path }}"
+    docker exec infisical-postgres pg_isready -U "${POSTGRES_USER:-infisical}" -d "${POSTGRES_DB:-infisical}"
+  args:
+    executable: /bin/bash
+  changed_when: false
+
+- name: Check Redis ping inside the container
+  ansible.builtin.shell: |
+    set -a
+    . "{{ runtime_env_path }}"
+    docker exec infisical-redis redis-cli -a "${INFISICAL_REDIS_PASSWORD}" ping | grep PONG
+  args:
+    executable: /bin/bash
+  changed_when: false

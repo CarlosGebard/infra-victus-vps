@@ -2,22 +2,25 @@
 
 ## Purpose
 
-Bootstrap the single-node VPS in private-only mode where SSH is public and application access happens through SSH tunnels.
+Bootstrap the single-node VPS in two private phases:
+
+1. harden the host and join Tailscale;
+2. start only the self-hosted Infisical control plane required to move the rest of the secrets out of ad hoc bootstrap files.
 
 ## Prerequisites
 
-- Hetzner Cloud account and API token
-- SSH key uploaded to Hetzner Cloud
 - Local SSH config entry named `hetzner-main`
-- Local `terraform`, `ansible`, and `docker` tooling installed as needed
+- Local `ansible`, `docker`, `sops`, and `age` tooling installed as needed
+- `TAILSCALE_AUTH_KEY` available in the local shell for the first bootstrap run
+
+## Current mode
+
+Terraform is retained in this repository for reproducibility and future rebuilds, but it is not part of the current bootstrap workflow because the production VPS already exists.
 
 ## Workflow
 
-1. Copy `terraform/environments/production/terraform.tfvars.example` to a local untracked `terraform.tfvars`.
-2. Set `hcloud_token`, `ssh_key_names`, and your restricted `ssh_allowed_cidrs`.
-3. Run Terraform from `terraform/environments/production/`.
-4. Confirm the fresh host is reachable through `ssh root@<host>`.
-5. Run the Ansible bootstrap playbook. This baseline configures:
+1. Confirm the existing host is reachable through `ssh root@<host>`.
+2. Run the Ansible bootstrap playbook with `TAILSCALE_AUTH_KEY` in the environment. This baseline configures:
    - admin user `carlos`
    - key-only SSH
    - `ufw`
@@ -26,20 +29,30 @@ Bootstrap the single-node VPS in private-only mode where SSH is public and appli
    - Docker CE from the official Docker repository
    - `2G` swap at `/swapfile`
    - `/srv/*` directory layout
-6. Reconnect using the admin user and confirm `sudo` works.
-7. Create `/srv/secrets/bootstrap/core.env` on the server from `compose/env/core.env.example` or the narrower `compose/env/infisical-bootstrap.env.example`.
-8. Create `/srv/secrets/bootstrap/seaweed-s3.json` on the server with production credentials if SeaweedFS is part of the current rollout.
-9. Run the Ansible deploy playbook.
-10. Open an SSH tunnel to NGINX:
+3. Reconnect using the admin user and confirm `sudo` works.
+4. Decrypt `secrets/bootstrap/infisical.enc.env` and install it as `/srv/secrets/bootstrap/infisical.env` on the server.
+5. Run the Infisical bootstrap playbook:
 
 ```bash
-ssh -L 8080:127.0.0.1:8080 hetzner-main
+ansible-playbook -i ansible/inventories/production/hosts.yml ansible/playbooks/deploy-infisical-bootstrap.yml
 ```
 
-11. Access the services through `http://127.0.0.1:8080`.
+6. Open an SSH tunnel to the private Infisical bootstrap endpoint:
+
+```bash
+ssh -L 18080:127.0.0.1:18080 hetzner-main
+```
+
+7. Access Infisical through `http://127.0.0.1:18080`.
+8. Inside Infisical:
+   - create the production project/environment
+   - load the runtime deploy secrets
+   - create a GitHub OIDC machine identity constrained to the repository and `production` environment
+9. Create a dedicated deploy SSH keypair, add the public key to `/home/carlos/.ssh/authorized_keys`, and store the private key in Infisical.
+10. Move all non-bootstrap runtime values into Infisical before enabling the GitHub Actions deploy workflow.
 
 ## Notes
 
-- Treat the bootstrap secret files as temporary inputs until Infisical becomes the operational source for managed secrets.
+- Treat `/srv/secrets/bootstrap/infisical.env` as temporary bootstrap material only.
 - Rotate all credentials inherited from the legacy stack.
 - After the first successful bootstrap, routine operations should use the admin user instead of `root`.

@@ -2,6 +2,7 @@
 *.env
 *.env.*
 !.env.example
+!secrets/bootstrap/*.enc.env
 
 # Terraform
 .terraform/
@@ -26,10 +27,13 @@ override.tf.json
 # Runtime artifacts
 tmp/
 dist/
+artifacts/
 
 # Local-only repo guidance
 AGENTS.md
 PLANS.md
 legacy/
+/.secrets/
 
 .codex
+secrets/bootstrap/*.dec

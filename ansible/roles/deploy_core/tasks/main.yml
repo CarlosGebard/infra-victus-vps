@@ -12,6 +12,13 @@
     - "{{ srv_root }}/apps/core/nginx/conf.d"
     - "{{ srv_root }}/apps/core/couchdb"
     - "{{ srv_root }}/apps/core/couchdb/local.d"
+    - "{{ srv_root }}/apps/core/observability"
+    - "{{ srv_root }}/apps/core/observability/loki"
+    - "{{ srv_root }}/apps/core/observability/prometheus"
+    - "{{ srv_root }}/apps/core/observability/grafana"
+    - "{{ srv_root }}/apps/core/observability/grafana/provisioning"
+    - "{{ srv_root }}/apps/core/observability/grafana/provisioning/datasources"
+    - "{{ srv_root }}/secrets/runtime"
 
 - name: Copy core stack compose file
   ansible.builtin.copy:
@@ -53,36 +60,88 @@
     group: root
     mode: "0640"
 
-- name: Check whether bootstrap environment file exists
-  ansible.builtin.stat:
-    path: "{{ bootstrap_env_path }}"
-  register: bootstrap_env_stat
+- name: Copy Loki config
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../compose/configs/observability/loki/config.yml"
+    dest: "{{ srv_root }}/apps/core/observability/loki/config.yml"
+    owner: root
+    group: root
+    mode: "0640"
 
-- name: Check whether Seaweed S3 config file exists
-  ansible.builtin.stat:
-    path: "{{ seaweed_s3_config_path }}"
-  register: seaweed_s3_stat
+- name: Copy Prometheus config
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../compose/configs/observability/prometheus/prometheus.yml"
+    dest: "{{ srv_root }}/apps/core/observability/prometheus/prometheus.yml"
+    owner: root
+    group: root
+    mode: "0640"
 
-- name: Stop deployment when bootstrap secret files are missing
+- name: Copy Grafana datasource provisioning
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../compose/configs/observability/grafana/provisioning/datasources/datasources.yml"
+    dest: "{{ srv_root }}/apps/core/observability/grafana/provisioning/datasources/datasources.yml"
+    owner: root
+    group: root
+    mode: "0640"
+
+- name: Stage runtime environment file from controller
+  ansible.builtin.copy:
+    src: "{{ runtime_env_source_file }}"
+    dest: "{{ runtime_env_path }}"
+    owner: root
+    group: root
+    mode: "0600"
+  when: runtime_env_source_file | length > 0
+
+- name: Stage Seaweed S3 config from controller
+  ansible.builtin.copy:
+    src: "{{ runtime_seaweed_s3_source_file }}"
+    dest: "{{ runtime_seaweed_s3_config_path }}"
+    owner: root
+    group: root
+    mode: "0600"
+  when: runtime_seaweed_s3_source_file | length > 0
+
+- name: Check whether runtime environment file exists
+  ansible.builtin.stat:
+    path: "{{ runtime_env_path }}"
+  register: runtime_env_stat
+
+- name: Check whether runtime Seaweed S3 config file exists
+  ansible.builtin.stat:
+    path: "{{ runtime_seaweed_s3_config_path }}"
+  register: runtime_seaweed_s3_stat
+
+- name: Stop deployment when runtime secret files are missing
   ansible.builtin.assert:
     that:
-      - bootstrap_env_stat.stat.exists
-      - seaweed_s3_stat.stat.exists
-    fail_msg: "Missing bootstrap secret material under /srv/secrets/bootstrap. Create core.env and seaweed-s3.json before deploy."
+      - runtime_env_stat.stat.exists
+      - runtime_seaweed_s3_stat.stat.exists
+    fail_msg: >-
+      Missing runtime secret material. Provide {{ runtime_env_path }} and
+      {{ runtime_seaweed_s3_config_path }} on the VPS or stage them from the
+      controller with runtime_*_source_file variables.
 
 - name: Link active environment file into the stack directory
   ansible.builtin.file:
-    src: "{{ bootstrap_env_path }}"
+    src: "{{ runtime_env_path }}"
     dest: "{{ srv_root }}/apps/core/.env"
     state: link
 
+- name: Stop Infisical bootstrap stack before full deploy
+  ansible.builtin.command:
+    cmd: docker compose -f {{ srv_root }}/apps/infisical-bootstrap/docker-compose.yml down
+  register: infisical_bootstrap_down
+  changed_when: "'Removing' in infisical_bootstrap_down.stdout or 'Stopping' in infisical_bootstrap_down.stdout"
+  failed_when: false
+
 - name: Validate rendered Compose configuration
   ansible.builtin.command:
-    cmd: docker compose --env-file {{ bootstrap_env_path }} -f {{ srv_root }}/apps/core/docker-compose.yml config
+    cmd: docker compose --env-file {{ runtime_env_path }} -f {{ srv_root }}/apps/core/docker-compose.yml config
   changed_when: false
 
 - name: Deploy the core services stack
   ansible.builtin.command:
-    cmd: docker compose --env-file {{ bootstrap_env_path }} -f {{ srv_root }}/apps/core/docker-compose.yml up -d
+    cmd: docker compose --env-file {{ runtime_env_path }} -f {{ srv_root }}/apps/core/docker-compose.yml up -d
   register: deploy_core_up
   changed_when: "'Started' in deploy_core_up.stdout or 'Recreated' in deploy_core_up.stdout or 'Creating' in deploy_core_up.stdout"
