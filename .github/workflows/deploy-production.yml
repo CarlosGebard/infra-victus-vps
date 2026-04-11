@@ -32,12 +32,12 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ inputs.git_ref }}
 
       - name: Fetch SSH connection secrets from Infisical with OIDC
-        uses: Infisical/secrets-action@v1.0.9
+        uses: Infisical/secrets-action@v1.0.12
         with:
           method: oidc
           identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
@@ -48,7 +48,7 @@ jobs:
           oidc-audience: ${{ env.INFISICAL_OIDC_AUDIENCE }}
 
       - name: Fetch runtime secrets from Infisical with OIDC
-        uses: Infisical/secrets-action@v1.0.9
+        uses: Infisical/secrets-action@v1.0.12
         with:
           method: oidc
           identity-id: ${{ env.INFISICAL_IDENTITY_ID }}
