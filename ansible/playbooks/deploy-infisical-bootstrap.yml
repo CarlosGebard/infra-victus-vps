@@ -1,6 +1,0 @@
----
-- name: Deploy Infisical bootstrap stack
-  hosts: vps
-  become: true
-  roles:
-    - role: deploy_infisical_bootstrap

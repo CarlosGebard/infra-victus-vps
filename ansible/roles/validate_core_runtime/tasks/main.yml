@@ -31,9 +31,6 @@
       - nginx
       - couchdb
       - seaweedfs
-      - infisical-postgres
-      - infisical-redis
-      - infisical
       - loki
       - prometheus
       - grafana
@@ -45,9 +42,6 @@
     - nginx
     - couchdb
     - seaweedfs
-    - infisical-postgres
-    - infisical-redis
-    - infisical
     - loki
     - prometheus
     - grafana
@@ -65,12 +59,6 @@
   ansible.builtin.command:
     cmd: curl -fsS http://127.0.0.1:8080/healthz
   register: nginx_health
-  changed_when: false
-
-- name: Check Infisical routed status endpoint
-  ansible.builtin.command:
-    cmd: curl -fsS http://127.0.0.1:8080/infisical/api/status
-  register: infisical_status
   changed_when: false
 
 - name: Check SeaweedFS master routed endpoint
@@ -102,24 +90,6 @@
     set -a
     . "{{ runtime_env_path }}"
     curl -fsS "http://${COUCHDB_USER:-admin}:${COUCHDB_PASSWORD}@127.0.0.1:8080/couchdb/_up" >/dev/null
-  args:
-    executable: /bin/bash
-  changed_when: false
-
-- name: Check PostgreSQL readiness inside the container
-  ansible.builtin.shell: |
-    set -a
-    . "{{ runtime_env_path }}"
-    docker exec infisical-postgres pg_isready -U "${POSTGRES_USER:-infisical}" -d "${POSTGRES_DB:-infisical}"
-  args:
-    executable: /bin/bash
-  changed_when: false
-
-- name: Check Redis ping inside the container
-  ansible.builtin.shell: |
-    set -a
-    . "{{ runtime_env_path }}"
-    docker exec infisical-redis redis-cli -a "${INFISICAL_REDIS_PASSWORD}" ping | grep PONG
   args:
     executable: /bin/bash
   changed_when: false

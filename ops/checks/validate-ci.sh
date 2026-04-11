@@ -45,10 +45,9 @@ run_check() {
 
 FAILED=0
 
-run_check "ansible-bootstrap-syntax" run_if_present ansible-playbook env "${ANSIBLE_ENV[@]}" ansible-playbook -i "${ROOT_DIR}/ansible/inventories/production/hosts.yml" "${ROOT_DIR}/ansible/playbooks/bootstrap.yml" --syntax-check || FAILED=1
-run_check "ansible-infisical-bootstrap-syntax" run_if_present ansible-playbook env "${ANSIBLE_ENV[@]}" ansible-playbook -i "${ROOT_DIR}/ansible/inventories/production/hosts.yml" "${ROOT_DIR}/ansible/playbooks/deploy-infisical-bootstrap.yml" --syntax-check || FAILED=1
-run_check "ansible-deploy-core-syntax" run_if_present ansible-playbook env "${ANSIBLE_ENV[@]}" ansible-playbook -i "${ROOT_DIR}/ansible/inventories/production/hosts.yml" "${ROOT_DIR}/ansible/playbooks/deploy-core.yml" --syntax-check || FAILED=1
-run_check "ansible-validate-core-runtime-syntax" run_if_present ansible-playbook env "${ANSIBLE_ENV[@]}" ansible-playbook -i "${ROOT_DIR}/ansible/inventories/production/hosts.yml" "${ROOT_DIR}/ansible/playbooks/validate-core-runtime.yml" --syntax-check || FAILED=1
+run_check "ansible-bootstrap-syntax" run_if_present ansible-playbook env "${ANSIBLE_ENV[@]}" ansible-playbook -i "${ROOT_DIR}/ansible/inventories/production/syntax-check.yml" "${ROOT_DIR}/ansible/bootstrap/playbooks/bootstrap.yml" --syntax-check || FAILED=1
+run_check "ansible-deploy-core-syntax" run_if_present ansible-playbook env "${ANSIBLE_ENV[@]}" ansible-playbook -i "${ROOT_DIR}/ansible/inventories/production/syntax-check.yml" "${ROOT_DIR}/ansible/runtime/playbooks/deploy-core.yml" --syntax-check || FAILED=1
+run_check "ansible-validate-core-runtime-syntax" run_if_present ansible-playbook env "${ANSIBLE_ENV[@]}" ansible-playbook -i "${ROOT_DIR}/ansible/inventories/production/syntax-check.yml" "${ROOT_DIR}/ansible/runtime/playbooks/validate-core-runtime.yml" --syntax-check || FAILED=1
 run_check "compose-render" run_if_present docker "${ROOT_DIR}/ops/checks/validate-core.sh" || FAILED=1
 run_check "compose-policy" "${ROOT_DIR}/ops/checks/policy-check.sh" || FAILED=1
 

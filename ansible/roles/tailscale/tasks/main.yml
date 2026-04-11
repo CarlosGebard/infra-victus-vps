@@ -1,4 +1,18 @@
 ---
+- name: Resolve Tailscale Ubuntu release codename
+  ansible.builtin.set_fact:
+    tailscale_ubuntu_release: "{{ ansible_distribution_release | default(ubuntu_release, true) }}"
+  when: tailscale_enabled
+
+- name: Require Ubuntu hosts for the Tailscale APT role
+  ansible.builtin.assert:
+    that:
+      - ansible_distribution == "Ubuntu"
+    fail_msg: >-
+      The Tailscale role currently supports Ubuntu only. Detected
+      {{ ansible_distribution }} {{ ansible_distribution_version | default('') }}.
+  when: tailscale_enabled
+
 - name: Ensure Tailscale keyring directory exists
   ansible.builtin.file:
     path: /usr/share/keyrings
@@ -10,7 +24,7 @@
 
 - name: Install Tailscale archive key
   ansible.builtin.get_url:
-    url: "https://pkgs.tailscale.com/{{ tailscale_track }}/ubuntu/{{ ubuntu_release }}.noarmor.gpg"
+    url: "https://pkgs.tailscale.com/{{ tailscale_track }}/ubuntu/{{ tailscale_ubuntu_release }}.noarmor.gpg"
     dest: /usr/share/keyrings/tailscale-archive-keyring.gpg
     owner: root
     group: root
@@ -19,18 +33,42 @@
 
 - name: Install Tailscale repository definition
   ansible.builtin.get_url:
-    url: "https://pkgs.tailscale.com/{{ tailscale_track }}/ubuntu/{{ ubuntu_release }}.tailscale-keyring.list"
+    url: "https://pkgs.tailscale.com/{{ tailscale_track }}/ubuntu/{{ tailscale_ubuntu_release }}.tailscale-keyring.list"
     dest: /etc/apt/sources.list.d/tailscale.list
     owner: root
     group: root
     mode: "0644"
   when: tailscale_enabled
 
+- name: Refresh APT cache after adding the Tailscale repository
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 0
+  changed_when: false
+  when: tailscale_enabled
+
+- name: Inspect Tailscale package availability
+  ansible.builtin.command:
+    cmd: apt-cache policy tailscale
+  register: tailscale_package_policy
+  changed_when: false
+  when: tailscale_enabled
+
+- name: Fail early when the Tailscale package is not visible in APT
+  ansible.builtin.assert:
+    that:
+      - "'Candidate: (none)' not in tailscale_package_policy.stdout"
+    fail_msg: >-
+      Tailscale package is not available from APT after configuring the repo
+      for Ubuntu {{ tailscale_ubuntu_release }}. Review the host release,
+      /etc/apt/sources.list.d/tailscale.list, and apt-cache policy tailscale.
+  when: tailscale_enabled
+
 - name: Install Tailscale package
   ansible.builtin.apt:
     name: tailscale
     state: present
-    update_cache: true
+    update_cache: false
     cache_valid_time: 3600
   when: tailscale_enabled
 
@@ -67,6 +105,15 @@
           + ([tailscale_args_extra] if tailscale_args_extra | trim | length > 0 else [])
         ) | join(' ')
       }}
+  when: tailscale_enabled
+
+- name: Ensure /etc/tailscale exists
+  ansible.builtin.file:
+    path: /etc/tailscale
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
   when: tailscale_enabled
 
 - name: Persist desired non-secret Tailscale flags

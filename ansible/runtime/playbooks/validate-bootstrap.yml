@@ -1,0 +1,6 @@
+---
+- name: Validate host bootstrap baseline
+  hosts: vps
+  become: true
+  roles:
+    - role: validate_bootstrap

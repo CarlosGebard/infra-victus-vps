@@ -1,6 +1,5 @@
 srv_root: /srv
 compose_project_name: core
-infisical_bootstrap_env_path: /srv/secrets/bootstrap/infisical.env
 runtime_env_path: /srv/secrets/runtime/core.env
 runtime_seaweed_s3_config_path: /srv/secrets/runtime/seaweed-s3.json
 runtime_env_source_file: "{{ lookup('ansible.builtin.env', 'RUNTIME_ENV_SOURCE_FILE') | default('', true) }}"

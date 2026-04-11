@@ -8,8 +8,6 @@ services:
         condition: service_healthy
       seaweedfs:
         condition: service_started
-      infisical:
-        condition: service_started
     ports:
       - "${NGINX_BIND_IP:-127.0.0.1}:${NGINX_HTTP_PORT:-8080}:80"
     volumes:
@@ -64,71 +62,6 @@ services:
       timeout: 10s
       retries: 5
       start_period: 30s
-    networks:
-      - backend
-
-  infisical-postgres:
-    image: postgres:17.9-alpine
-    container_name: infisical-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-infisical}
-      POSTGRES_USER: ${POSTGRES_USER:-infisical}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    volumes:
-      - /srv/data/infisical/postgres:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-infisical} -d ${POSTGRES_DB:-infisical}"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 20s
-    networks:
-      - backend
-
-  infisical-redis:
-    image: redis:8.0.6-alpine
-    container_name: infisical-redis
-    restart: unless-stopped
-    command:
-      - redis-server
-      - --appendonly
-      - "yes"
-      - --requirepass
-      - ${INFISICAL_REDIS_PASSWORD}
-    volumes:
-      - /srv/data/infisical/redis:/data
-    healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a ${INFISICAL_REDIS_PASSWORD} ping | grep PONG"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 10s
-    networks:
-      - backend
-
-  infisical:
-    image: ${INFISICAL_IMAGE:-infisical/infisical:v0.158.11}
-    container_name: infisical
-    restart: unless-stopped
-    depends_on:
-      infisical-postgres:
-        condition: service_healthy
-      infisical-redis:
-        condition: service_healthy
-    environment:
-      NODE_ENV: production
-      SITE_URL: ${INFISICAL_SITE_URL:-http://127.0.0.1:8080/infisical}
-      ENCRYPTION_KEY: ${INFISICAL_ENCRYPTION_KEY}
-      AUTH_SECRET: ${INFISICAL_AUTH_SECRET}
-      DB_CONNECTION_URI: postgresql://${POSTGRES_USER:-infisical}:${POSTGRES_PASSWORD}@infisical-postgres:5432/${POSTGRES_DB:-infisical}
-      REDIS_URL: redis://:${INFISICAL_REDIS_PASSWORD}@infisical-redis:6379
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/api/status || exit 1"]
-      interval: 30s
-      timeout: 5s
-      retries: 10
-      start_period: 45s
     networks:
       - backend
 

@@ -15,5 +15,5 @@ Current runbooks in this repository include:
 - `bootstrap-private-access.md`
 - `couchdb-restore-migration.md`
 - `infrastructure-validation-plan.md`
-- `infisical-bootstrap-example.md`
 - `observability-stack.md`
+- `seed-infisical-cloud.md`

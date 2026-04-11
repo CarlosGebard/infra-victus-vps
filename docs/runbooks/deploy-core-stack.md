@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Deploy the full core services stack after the host is hardened and Infisical is already serving as the runtime source of truth for deploy secrets.
+Deploy the full core services stack after the host is hardened and Infisical Cloud is already serving as the source of truth for bootstrap and runtime deploy secrets.
 
 Terraform is not part of this deployment workflow today. The production VPS already exists, so the active path is Ansible bootstrap plus GitHub Actions deploy.
 
@@ -20,18 +20,17 @@ The first bootstrap against a fresh host must still connect as `root` so Ansible
 
 ## Phase order
 
-1. Run `ansible/playbooks/bootstrap.yml` against the fresh host.
-2. Run `ansible/playbooks/deploy-infisical-bootstrap.yml` with the minimal Infisical bootstrap env file.
-3. Configure machine identity trust in Infisical for GitHub OIDC.
-4. Store deploy/runtime secrets in Infisical.
-5. Trigger `.github/workflows/deploy-production.yml`.
+1. Run `make bootstrap` so the bootstrap wrapper resolves the production host and SSH material from Infisical.
+2. Configure machine identity trust in Infisical Cloud for GitHub OIDC and operator access.
+3. Store runtime secrets in Infisical Cloud.
+4. Trigger `.github/workflows/deploy-production.yml` or render runtime files manually and run `deploy-core.yml`.
 
 ## Commands
 
 Bootstrap the host for the first time:
 
 ```bash
-ansible-playbook -i ansible/inventories/production/hosts.yml -u root ansible/playbooks/bootstrap.yml
+make bootstrap
 ```
 
 After bootstrap, routine operations should use the hardened `carlos` user.
@@ -39,19 +38,34 @@ After bootstrap, routine operations should use the hardened `carlos` user.
 Re-run bootstrap or apply security changes later:
 
 ```bash
-ansible-playbook -i ansible/inventories/production/hosts.yml ansible/playbooks/bootstrap.yml
-```
-
-Deploy the Infisical bootstrap stack manually from an operator workstation:
-
-```bash
-ansible-playbook -i ansible/inventories/production/hosts.yml ansible/playbooks/deploy-infisical-bootstrap.yml
+make bootstrap
 ```
 
 Deploy the full stack manually from an operator workstation:
 
 ```bash
-ansible-playbook -i ansible/inventories/production/hosts.yml ansible/playbooks/deploy-core.yml
+./ops/scripts/fetch_infisical_cloud.py connection-ssh --out /tmp/connection.env
+set -a
+. /tmp/connection.env
+set +a
+./ops/scripts/fetch_infisical_cloud.py runtime-env --out /tmp/core.env
+./ops/scripts/fetch_infisical_cloud.py seaweed-s3 --out /tmp/seaweed-s3.json
+RUNTIME_ENV_SOURCE_FILE=/tmp/core.env \
+RUNTIME_SEAWEED_S3_SOURCE_FILE=/tmp/seaweed-s3.json \
+ansible-playbook \
+  -i <(cat <<EOF
+all:
+  children:
+    vps:
+      hosts:
+        production:
+          ansible_host: ${PROD_HOST}
+          ansible_user: ${PROD_SSH_USER}
+          ansible_become: true
+EOF
+) \
+  --private-key <(printf '%s\n' "${PROD_SSH_PRIVATE_KEY}") \
+  ansible/runtime/playbooks/deploy-core.yml
 ```
 
 ## GitHub Actions production deploy
@@ -67,40 +81,54 @@ The repository includes a manual workflow at `.github/workflows/deploy-productio
 
 Configure these GitHub `production` environment variables:
 
-- `INFISICAL_DOMAIN`
-- `INFISICAL_IDENTITY_ID`
+- `INFISICAL_API_URL`
 - `INFISICAL_PROJECT_SLUG`
 - `INFISICAL_ENV_SLUG`
 
-The `identity-id` is not a secret and is safe to store as a variable or commit directly in workflow YAML.
+The workflow now commits the GitHub OIDC identity metadata directly in YAML:
+
+- `identity-id`: `0a100e5d-1422-437e-b447-e032f32403fa`
+- `oidc-audience`: `repo:CarlosGebard/infra-victus-vps:ref:refs/heads/main`
+
+The matching GitHub OIDC subject expected by Infisical is:
+
+- `repo:CarlosGebard/infra-victus-vps`
+
+That subject requires GitHub OIDC subject customization to already be configured on the repository or organization side.
 
 If you want approval gates, configure required reviewers on the GitHub `production` environment.
 
 ## Required secret material in Infisical
 
-The workflow expects at least these secret values to exist in Infisical:
+The workflow expects these secret values to exist in Infisical:
 
-- `PROD_HOST`
-- `PROD_SSH_USER`
-- `PROD_SSH_PRIVATE_KEY`
-- `PROD_SSH_KNOWN_HOSTS`
-- `COUCHDB_PASSWORD`
-- `POSTGRES_PASSWORD`
-- `INFISICAL_REDIS_PASSWORD`
-- `INFISICAL_ENCRYPTION_KEY`
-- `INFISICAL_AUTH_SECRET`
-- `GRAFANA_ADMIN_PASSWORD`
-- `SEAWEED_S3_ACCESS_KEY`
-- `SEAWEED_S3_SECRET_KEY`
+- `/connection`
+  - `PROD_HOST`
+  - `PROD_SSH_USER`
+  - `PROD_SSH_PRIVATE_KEY`
+  - `PROD_SSH_KNOWN_HOSTS`
+- `/runtime`
+  - `COUCHDB_PASSWORD`
+  - `GRAFANA_ADMIN_PASSWORD`
+  - `SEAWEED_S3_ACCESS_KEY`
+  - `SEAWEED_S3_SECRET_KEY`
+  - optional: `COUCHDB_USER`
+  - optional: `GRAFANA_ADMIN_USER`
 
 GitHub Actions fetches these values at runtime and writes:
 
 - `/srv/secrets/runtime/core.env`
 - `/srv/secrets/runtime/seaweed-s3.json`
 
-The full deploy stops the Infisical bootstrap stack before bringing up the core stack so the Infisical data directories are not mounted by two compose projects at once.
+For operator-driven manual deploys, use `ops/scripts/fetch_infisical_cloud.py` with local Universal Auth credentials to render the runtime files before invoking Ansible.
 
-SeaweedFS belongs only to phase 2. It is not part of the Infisical bootstrap stack.
+The required Infisical Cloud folder layout is:
+
+- `/bootstrap` for host bootstrap operator inputs such as `TAILSCALE_AUTH_KEY`
+- `/connection` for SSH host, user, key, and known-hosts material
+- `/runtime` for runtime and deploy secrets used by GitHub Actions and manual deploys
+
+SeaweedFS belongs only to the runtime stack and is not part of host bootstrap.
 
 ## Observability baseline
 

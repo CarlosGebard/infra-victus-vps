@@ -1,0 +1,8 @@
+all:
+  children:
+    vps:
+      hosts:
+        syntax-check-placeholder:
+          ansible_host: bootstrap-target.invalid
+          ansible_user: operator
+          ansible_become: true

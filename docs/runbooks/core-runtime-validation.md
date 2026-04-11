@@ -11,19 +11,36 @@ Provide an executable post-deploy validation path for the active VPS runtime aft
 - `nginx` responds on `/healthz`
 - routed application endpoints respond through the local gateway
 - `loki`, `prometheus`, and `grafana` answer on their localhost ports
-- PostgreSQL and Redis answer from inside their containers
+- CouchDB answers through the local gateway with runtime credentials
 
 ## Command
 
 ```bash
-ansible-playbook -i ansible/inventories/production/hosts.yml ansible/playbooks/validate-core-runtime.yml
+./ops/scripts/fetch_infisical_cloud.py connection-ssh --out /tmp/connection.env
+set -a
+. /tmp/connection.env
+set +a
+ansible-playbook \
+  -i <(cat <<EOF
+all:
+  children:
+    vps:
+      hosts:
+        production:
+          ansible_host: ${PROD_HOST}
+          ansible_user: ${PROD_SSH_USER}
+          ansible_become: true
+EOF
+) \
+  --private-key <(printf '%s\n' "${PROD_SSH_PRIVATE_KEY}") \
+  ansible/runtime/playbooks/validate-core-runtime.yml
 ```
 
 ## Expected inputs
 
 - the core stack has already been deployed
 - `/srv/secrets/runtime/core.env` exists on the VPS
-- the local inventory points to the production host
+- the connection inventory is rendered from Infisical-provided `PROD_*` values
 
 ## Failure handling
 

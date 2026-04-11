@@ -1,0 +1,111 @@
+---
+- name: Gather service facts
+  ansible.builtin.service_facts:
+
+- name: Check admin user exists
+  ansible.builtin.command:
+    cmd: id {{ admin_user }}
+  changed_when: false
+
+- name: Check sudo works for admin user
+  ansible.builtin.command:
+    cmd: sudo -n -l -U {{ admin_user }}
+  changed_when: false
+
+- name: Check SSH daemon configuration disables password auth
+  ansible.builtin.command:
+    cmd: sshd -T -C user=root -C host=localhost -C addr=127.0.0.1
+  register: sshd_config
+  changed_when: false
+
+- name: Assert SSH hardening flags are applied
+  ansible.builtin.assert:
+    that:
+      - "'passwordauthentication no' in sshd_config.stdout"
+      - "'permitrootlogin no' in sshd_config.stdout"
+    fail_msg: >-
+      SSH hardening is incomplete. Expected PasswordAuthentication no and
+      PermitRootLogin no in sshd -T output.
+
+- name: Assert critical services are running
+  ansible.builtin.assert:
+    that:
+      - item in ansible_facts.services
+      - ansible_facts.services[item].state == 'running'
+    fail_msg: "Critical service {{ item }} is not running."
+  loop:
+    - ssh.service
+    - docker.service
+
+- name: Assert optional platform services are present and not failed
+  ansible.builtin.assert:
+    that:
+      - item in ansible_facts.services
+      - ansible_facts.services[item].state in ['running', 'stopped']
+    fail_msg: "Platform service {{ item }} is missing or in an unexpected state."
+  loop:
+    - qemu-guest-agent.service
+    - fail2ban.service
+
+- name: Check UFW status
+  ansible.builtin.command:
+    cmd: ufw status
+  register: ufw_status
+  changed_when: false
+
+- name: Assert UFW is active and SSH is allowed
+  ansible.builtin.assert:
+    that:
+      - "'Status: active' in ufw_status.stdout"
+      - "'22/tcp' in ufw_status.stdout"
+    fail_msg: "UFW is not active or SSH is not allowed."
+
+- name: Check swap allocation
+  ansible.builtin.command:
+    cmd: swapon --show --noheadings --raw
+  register: swapon_output
+  changed_when: false
+
+- name: Assert swap is present
+  ansible.builtin.assert:
+    that:
+      - swapon_output.stdout | trim | length > 0
+    fail_msg: "No active swap device found."
+
+- name: Check Tailscale status
+  ansible.builtin.command:
+    cmd: tailscale status --json
+  register: tailscale_status_raw
+  changed_when: false
+
+- name: Parse Tailscale status
+  ansible.builtin.set_fact:
+    tailscale_status: "{{ tailscale_status_raw.stdout | from_json }}"
+
+- name: Assert Tailscale is running
+  ansible.builtin.assert:
+    that:
+      - tailscale_status.BackendState == "Running"
+    fail_msg: >-
+      Tailscale is not fully connected. BackendState={{ tailscale_status.BackendState | default('unknown') }}.
+
+- name: Check expected infrastructure directories exist
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop:
+    - "{{ srv_root }}"
+    - "{{ srv_root }}/apps"
+    - "{{ srv_root }}/apps/core"
+    - "{{ srv_root }}/data"
+    - "{{ srv_root }}/logs"
+    - "{{ srv_root }}/backups"
+    - "{{ srv_root }}/secrets/runtime"
+  register: infrastructure_paths
+
+- name: Assert expected infrastructure directories exist
+  ansible.builtin.assert:
+    that:
+      - item.stat.exists
+      - item.stat.isdir
+    fail_msg: "Expected directory is missing: {{ item.stat.path }}"
+  loop: "{{ infrastructure_paths.results }}"

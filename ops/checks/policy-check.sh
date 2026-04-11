@@ -4,7 +4,6 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 CORE_COMPOSE="${ROOT_DIR}/compose/stacks/core/docker-compose.yml"
-BOOTSTRAP_COMPOSE="${ROOT_DIR}/compose/stacks/infisical-bootstrap/docker-compose.yml"
 FAILED=0
 
 fail_if_matches() {
@@ -71,9 +70,10 @@ check_ports() {
 
 fail_if_matches "floating latest image tags are not allowed" 'image: .*:latest([[:space:]]|$|\})' "${ROOT_DIR}/compose/stacks"
 fail_if_matches "relative bind mounts are not allowed in compose stacks" '^[[:space:]]*-[[:space:]]+\.\.?/' "${ROOT_DIR}/compose/stacks"
+fail_if_matches "committed Ansible inventory must not contain a real IPv4 production host" 'ansible_host:[[:space:]]*[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' "${ROOT_DIR}/ansible/inventories"
+fail_if_matches "committed Ansible inventory must not default to root" 'ansible_user:[[:space:]]*root([[:space:]]|$)' "${ROOT_DIR}/ansible/inventories"
 
 check_ports "${CORE_COMPOSE}" "nginx,loki,prometheus,grafana"
-check_ports "${BOOTSTRAP_COMPOSE}" "infisical"
 
 if [[ "${FAILED}" -ne 0 ]]; then
   exit 1
