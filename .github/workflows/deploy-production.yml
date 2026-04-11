@@ -23,6 +23,7 @@ jobs:
       id-token: write
     env:
       INFISICAL_API_URL: ${{ vars.INFISICAL_API_URL }}
+      INFISICAL_ORGANIZATION_SLUG: ${{ vars.INFISICAL_ORGANIZATION_SLUG }}
       INFISICAL_PROJECT_SLUG: ${{ vars.INFISICAL_PROJECT_SLUG }}
       INFISICAL_ENV_SLUG: ${{ vars.INFISICAL_ENV_SLUG }}
       INFISICAL_IDENTITY_ID: 0a100e5d-1422-437e-b447-e032f32403fa
@@ -44,6 +45,7 @@ jobs:
       - name: Validate Infisical workflow metadata
         run: |
           test -n "${INFISICAL_API_URL}"
+          test -n "${INFISICAL_ORGANIZATION_SLUG}"
           test -n "${INFISICAL_PROJECT_SLUG}"
           test -n "${INFISICAL_ENV_SLUG}"
           case "${INFISICAL_API_URL}" in
@@ -99,7 +101,7 @@ jobs:
           import urllib.request
           import uuid
 
-          def request_json(method: str, url: str, *, headers: dict[str, str] | None = None, payload: dict | None = None) -> dict:
+          def request_json(method: str, url: str, *, headers: dict[str, str] | None = None, payload: dict | None = None, form: dict | None = None) -> dict:
               request = urllib.request.Request(url, method=method)
               for key, value in (headers or {}).items():
                   request.add_header(key, value)
@@ -107,12 +109,16 @@ jobs:
               if payload is not None:
                   data = json.dumps(payload).encode("utf-8")
                   request.add_header("Content-Type", "application/json")
+              elif form is not None:
+                  data = urllib.parse.urlencode(form).encode("utf-8")
+                  request.add_header("Content-Type", "application/x-www-form-urlencoded")
               with urllib.request.urlopen(request, data=data) as response:
                   return json.loads(response.read().decode("utf-8"))
 
           api_url = os.environ["INFISICAL_API_URL"].strip().rstrip("/")
           if api_url.endswith("/api"):
               api_url = api_url[:-4]
+          organization_slug = os.environ["INFISICAL_ORGANIZATION_SLUG"]
           audience = os.environ["INFISICAL_OIDC_AUDIENCE"]
           identity_id = os.environ["INFISICAL_IDENTITY_ID"]
           project_slug = os.environ["INFISICAL_PROJECT_SLUG"]
@@ -130,7 +136,11 @@ jobs:
           login_response = request_json(
               "POST",
               f"{api_url}/api/v1/auth/oidc-auth/login",
-              payload={"identityId": identity_id, "jwt": oidc_jwt},
+              form={
+                  "identityId": identity_id,
+                  "jwt": oidc_jwt,
+                  "organizationSlug": organization_slug,
+              },
           )
           access_token = login_response["accessToken"]
 
