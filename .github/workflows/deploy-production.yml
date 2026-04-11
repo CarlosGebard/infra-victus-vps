@@ -41,6 +41,19 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Validate Infisical workflow metadata
+        run: |
+          test -n "${INFISICAL_API_URL}"
+          test -n "${INFISICAL_PROJECT_SLUG}"
+          test -n "${INFISICAL_ENV_SLUG}"
+          case "${INFISICAL_API_URL}" in
+            http://*|https://*) ;;
+            *)
+              echo "INFISICAL_API_URL must include http:// or https://, got: ${INFISICAL_API_URL}" >&2
+              exit 1
+              ;;
+          esac
+
       - name: Fetch deploy secrets from Infisical with GitHub OIDC
         run: |
           python3 <<'PY'
@@ -61,7 +74,9 @@ jobs:
               with urllib.request.urlopen(request, data=data) as response:
                   return json.loads(response.read().decode("utf-8"))
 
-          api_url = os.environ["INFISICAL_API_URL"].rstrip("/")
+          api_url = os.environ["INFISICAL_API_URL"].strip().rstrip("/")
+          if api_url.endswith("/api"):
+              api_url = api_url[:-4]
           audience = os.environ["INFISICAL_OIDC_AUDIENCE"]
           identity_id = os.environ["INFISICAL_IDENTITY_ID"]
           project_slug = os.environ["INFISICAL_PROJECT_SLUG"]
