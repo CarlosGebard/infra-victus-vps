@@ -79,6 +79,7 @@ The repository includes a manual workflow at `.github/workflows/deploy-productio
 - fetches deploy secrets from the Infisical root path for the active job
 - ensures the base `/srv` directory layout exists before deploying the stack
 - stages runtime files on the runner and then calls the deploy playbook
+- relies on post-deploy host-side validation for service readiness instead of blocking the Compose step on every container healthcheck
 
 The workflow now commits the Infisical identity metadata directly in YAML:
 

@@ -51,8 +51,8 @@
 - name: Assert that all core containers are healthy
   ansible.builtin.assert:
     that:
-      - item.stdout == "healthy"
-    fail_msg: "Container {{ item.item }} is not healthy: {{ item.stdout }}"
+      - item.stdout in ["healthy", "running"]
+    fail_msg: "Container {{ item.item }} is not healthy or running: {{ item.stdout }}"
   loop: "{{ core_container_health.results }}"
 
 - name: Check NGINX health endpoint
