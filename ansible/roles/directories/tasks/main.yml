@@ -1,37 +1,37 @@
 ---
 - name: Ensure infrastructure directories exist
   ansible.builtin.file:
-    path: "{{ item }}"
+    path: "{{ item.path }}"
     state: directory
     owner: root
     group: root
-    mode: "0750"
+    mode: "{{ item.mode }}"
   loop:
-    - "{{ srv_root }}"
-    - "{{ srv_root }}/apps"
-    - "{{ srv_root }}/apps/core"
-    - "{{ srv_root }}/apps/core/nginx"
-    - "{{ srv_root }}/apps/core/nginx/conf.d"
-    - "{{ srv_root }}/apps/core/couchdb"
-    - "{{ srv_root }}/apps/core/couchdb/local.d"
-    - "{{ srv_root }}/apps/core/observability"
-    - "{{ srv_root }}/apps/core/observability/loki"
-    - "{{ srv_root }}/apps/core/observability/prometheus"
-    - "{{ srv_root }}/apps/core/observability/grafana"
-    - "{{ srv_root }}/apps/core/observability/grafana/provisioning"
-    - "{{ srv_root }}/apps/core/observability/grafana/provisioning/datasources"
-    - "{{ srv_root }}/data"
-    - "{{ srv_root }}/data/couchdb"
-    - "{{ srv_root }}/data/couchdb/data"
-    - "{{ srv_root }}/data/seaweed"
-    - "{{ srv_root }}/data/seaweed/data"
-    - "{{ srv_root }}/data/observability"
-    - "{{ srv_root }}/data/observability/loki"
-    - "{{ srv_root }}/data/observability/prometheus"
-    - "{{ srv_root }}/data/observability/grafana"
-    - "{{ srv_root }}/logs"
-    - "{{ srv_root }}/logs/nginx"
-    - "{{ srv_root }}/logs/observability"
-    - "{{ srv_root }}/backups"
-    - "{{ srv_root }}/secrets"
-    - "{{ srv_root }}/secrets/runtime"
+    - { path: "{{ srv_root }}", mode: "0755" }
+    - { path: "{{ srv_root }}/apps", mode: "0755" }
+    - { path: "{{ srv_root }}/apps/core", mode: "0755" }
+    - { path: "{{ srv_root }}/apps/core/nginx", mode: "0755" }
+    - { path: "{{ srv_root }}/apps/core/nginx/conf.d", mode: "0755" }
+    - { path: "{{ srv_root }}/apps/core/couchdb", mode: "0755" }
+    - { path: "{{ srv_root }}/apps/core/couchdb/local.d", mode: "0755" }
+    - { path: "{{ srv_root }}/apps/core/observability", mode: "0755" }
+    - { path: "{{ srv_root }}/apps/core/observability/loki", mode: "0755" }
+    - { path: "{{ srv_root }}/apps/core/observability/prometheus", mode: "0755" }
+    - { path: "{{ srv_root }}/apps/core/observability/grafana", mode: "0755" }
+    - { path: "{{ srv_root }}/apps/core/observability/grafana/provisioning", mode: "0755" }
+    - { path: "{{ srv_root }}/apps/core/observability/grafana/provisioning/datasources", mode: "0755" }
+    - { path: "{{ srv_root }}/data", mode: "0750" }
+    - { path: "{{ srv_root }}/data/couchdb", mode: "0750" }
+    - { path: "{{ srv_root }}/data/couchdb/data", mode: "0750" }
+    - { path: "{{ srv_root }}/data/seaweed", mode: "0750" }
+    - { path: "{{ srv_root }}/data/seaweed/data", mode: "0750" }
+    - { path: "{{ srv_root }}/data/observability", mode: "0750" }
+    - { path: "{{ srv_root }}/data/observability/loki", mode: "0750" }
+    - { path: "{{ srv_root }}/data/observability/prometheus", mode: "0750" }
+    - { path: "{{ srv_root }}/data/observability/grafana", mode: "0750" }
+    - { path: "{{ srv_root }}/logs", mode: "0750" }
+    - { path: "{{ srv_root }}/logs/nginx", mode: "0750" }
+    - { path: "{{ srv_root }}/logs/observability", mode: "0750" }
+    - { path: "{{ srv_root }}/backups", mode: "0750" }
+    - { path: "{{ srv_root }}/secrets", mode: "0750" }
+    - { path: "{{ srv_root }}/secrets/runtime", mode: "0750" }

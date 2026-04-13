@@ -7,9 +7,9 @@
     group: root
     mode: "{{ item.mode }}"
   loop:
-    - { path: "{{ srv_root }}/apps/core", mode: "0750" }
-    - { path: "{{ srv_root }}/apps/core/nginx", mode: "0750" }
-    - { path: "{{ srv_root }}/apps/core/nginx/conf.d", mode: "0750" }
+    - { path: "{{ srv_root }}/apps/core", mode: "0755" }
+    - { path: "{{ srv_root }}/apps/core/nginx", mode: "0755" }
+    - { path: "{{ srv_root }}/apps/core/nginx/conf.d", mode: "0755" }
     - { path: "{{ srv_root }}/apps/core/couchdb", mode: "0755" }
     - { path: "{{ srv_root }}/apps/core/couchdb/local.d", mode: "0755" }
     - { path: "{{ srv_root }}/apps/core/observability", mode: "0755" }
@@ -34,7 +34,7 @@
     dest: "{{ srv_root }}/apps/core/nginx/nginx.conf"
     owner: root
     group: root
-    mode: "0640"
+    mode: "0644"
 
 - name: Copy NGINX virtual host config
   ansible.builtin.copy:
@@ -42,7 +42,7 @@
     dest: "{{ srv_root }}/apps/core/nginx/conf.d/default.conf"
     owner: root
     group: root
-    mode: "0640"
+    mode: "0644"
 
 - name: Copy CouchDB local config
   ansible.builtin.copy:
