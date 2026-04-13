@@ -75,26 +75,15 @@ The repository includes a manual workflow at `.github/workflows/deploy-productio
 - `workflow_dispatch`
 - targets the GitHub `production` environment
 - requests a GitHub OIDC token with `id-token: write`
-- authenticates to Infisical using machine identity OIDC auth
-- fetches runtime deploy secrets only for the active job
+- authenticates to Infisical using `Infisical/secrets-action@v1.0.10`
+- fetches `/connection` and `/runtime` secrets only for the active job
 - stages runtime files on the runner and then calls the deploy playbook
 
-Configure these GitHub `production` environment variables:
-
-- `INFISICAL_API_URL`
-- `INFISICAL_PROJECT_SLUG`
-- `INFISICAL_ENV_SLUG`
-
-The workflow now commits the GitHub OIDC identity metadata directly in YAML:
+The workflow now commits the Infisical identity metadata directly in YAML:
 
 - `identity-id`: `0a100e5d-1422-437e-b447-e032f32403fa`
-- `oidc-audience`: `repo:CarlosGebard/infra-victus-vps:ref:refs/heads/main`
-
-The matching GitHub OIDC subject expected by Infisical is:
-
-- `repo:CarlosGebard/infra-victus-vps`
-
-That subject requires GitHub OIDC subject customization to already be configured on the repository or organization side.
+- `project-slug`: `victus-main-server-qy-2z`
+- `env-slug`: `prod`
 
 If you want approval gates, configure required reviewers on the GitHub `production` environment.
 
