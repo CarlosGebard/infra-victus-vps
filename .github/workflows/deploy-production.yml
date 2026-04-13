@@ -16,7 +16,7 @@ jobs:
   deploy:
     name: Deploy production from Infisical runtime secrets
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
     environment: production
     permissions:
       contents: read
@@ -138,10 +138,15 @@ jobs:
           )
           oidc_jwt = oidc_response["value"]
 
+          payload_b64 = oidc_jwt.split(".")[1]
+          padding = "=" * (-len(payload_b64) % 4)
+          decoded = base64.urlsafe_b64decode(payload_b64 + padding).decode("utf-8")
+          print(decoded)
+
           login_response = request_json(
               "POST",
               f"{api_url}/api/v1/auth/oidc-auth/login",
-              form={
+              payload={
                   "identityId": identity_id,
                   "jwt": oidc_jwt,
                   "organizationSlug": organization_slug,
