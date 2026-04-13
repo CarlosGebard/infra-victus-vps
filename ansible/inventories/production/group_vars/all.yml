@@ -26,16 +26,88 @@ grafana_apt_arch_map:
 alloy_http_listen_addr: 0.0.0.0:12345
 alloy_storage_path: /var/lib/alloy/data
 alloy_loki_write_url: http://127.0.0.1:3100/loki/api/v1/push
-couchdb_container_uid: 5984
-couchdb_container_gid: 5984
-seaweed_container_uid: 1000
-seaweed_container_gid: 1000
-loki_container_uid: 10001
-loki_container_gid: 10001
-prometheus_container_uid: 65534
-prometheus_container_gid: 65534
-grafana_container_uid: 472
-grafana_container_gid: 472
+runtime_service_ownership:
+  couchdb:
+    path: /srv/data/couchdb/data
+    uid: 5984
+    gid: 5984
+    mode: "0750"
+  seaweed:
+    path: /srv/data/seaweed/data
+    uid: 1000
+    gid: 1000
+    mode: "0750"
+  loki:
+    path: /srv/data/observability/loki
+    uid: 10001
+    gid: 10001
+    mode: "0750"
+  loki_chunks:
+    path: /srv/data/observability/loki/chunks
+    uid: 10001
+    gid: 10001
+    mode: "0750"
+  loki_compactor:
+    path: /srv/data/observability/loki/compactor
+    uid: 10001
+    gid: 10001
+    mode: "0750"
+  prometheus:
+    path: /srv/data/observability/prometheus
+    uid: 65534
+    gid: 65534
+    mode: "0750"
+  grafana:
+    path: /srv/data/observability/grafana
+    uid: 472
+    gid: 472
+    mode: "0750"
+runtime_layout:
+  public_dirs:
+    - { path: "/srv", mode: "0755" }
+    - { path: "/srv/apps", mode: "0755" }
+    - { path: "/srv/apps/core", mode: "0755" }
+    - { path: "/srv/apps/core/nginx", mode: "0755" }
+    - { path: "/srv/apps/core/nginx/conf.d", mode: "0755" }
+    - { path: "/srv/apps/core/couchdb", mode: "0755" }
+    - { path: "/srv/apps/core/couchdb/local.d", mode: "0755" }
+    - { path: "/srv/apps/core/observability", mode: "0755" }
+    - { path: "/srv/apps/core/observability/loki", mode: "0755" }
+    - { path: "/srv/apps/core/observability/prometheus", mode: "0755" }
+    - { path: "/srv/apps/core/observability/grafana", mode: "0755" }
+    - { path: "/srv/apps/core/observability/grafana/provisioning", mode: "0755" }
+    - { path: "/srv/apps/core/observability/grafana/provisioning/datasources", mode: "0755" }
+  restricted_dirs:
+    - { path: "/srv/data", mode: "0750" }
+    - { path: "/srv/data/couchdb", mode: "0750" }
+    - { path: "/srv/data/couchdb/data", mode: "0750" }
+    - { path: "/srv/data/seaweed", mode: "0750" }
+    - { path: "/srv/data/seaweed/data", mode: "0750" }
+    - { path: "/srv/data/observability", mode: "0750" }
+    - { path: "/srv/data/observability/loki", mode: "0750" }
+    - { path: "/srv/data/observability/loki/chunks", mode: "0750" }
+    - { path: "/srv/data/observability/loki/compactor", mode: "0750" }
+    - { path: "/srv/data/observability/prometheus", mode: "0750" }
+    - { path: "/srv/data/observability/grafana", mode: "0750" }
+    - { path: "/srv/logs", mode: "0750" }
+    - { path: "/srv/logs/nginx", mode: "0750" }
+    - { path: "/srv/logs/observability", mode: "0750" }
+    - { path: "/srv/backups", mode: "0750" }
+    - { path: "/srv/secrets", mode: "0750" }
+    - { path: "/srv/secrets/runtime", mode: "0750" }
+runtime_deploy_dirs:
+  - { path: "/srv/apps/core", mode: "0755" }
+  - { path: "/srv/apps/core/nginx", mode: "0755" }
+  - { path: "/srv/apps/core/nginx/conf.d", mode: "0755" }
+  - { path: "/srv/apps/core/couchdb", mode: "0755" }
+  - { path: "/srv/apps/core/couchdb/local.d", mode: "0755" }
+  - { path: "/srv/apps/core/observability", mode: "0755" }
+  - { path: "/srv/apps/core/observability/loki", mode: "0755" }
+  - { path: "/srv/apps/core/observability/prometheus", mode: "0755" }
+  - { path: "/srv/apps/core/observability/grafana", mode: "0755" }
+  - { path: "/srv/apps/core/observability/grafana/provisioning", mode: "0755" }
+  - { path: "/srv/apps/core/observability/grafana/provisioning/datasources", mode: "0755" }
+  - { path: "/srv/secrets/runtime", mode: "0750" }
 tailscale_enabled: true
 tailscale_auth_key: "{{ lookup('ansible.builtin.env', 'TAILSCALE_AUTH_KEY') | default('', true) }}"
 tailscale_advertise_tags:

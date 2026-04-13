@@ -6,51 +6,14 @@
     owner: root
     group: root
     mode: "{{ item.mode }}"
-  loop:
-    - { path: "{{ srv_root }}", mode: "0755" }
-    - { path: "{{ srv_root }}/apps", mode: "0755" }
-    - { path: "{{ srv_root }}/apps/core", mode: "0755" }
-    - { path: "{{ srv_root }}/apps/core/nginx", mode: "0755" }
-    - { path: "{{ srv_root }}/apps/core/nginx/conf.d", mode: "0755" }
-    - { path: "{{ srv_root }}/apps/core/couchdb", mode: "0755" }
-    - { path: "{{ srv_root }}/apps/core/couchdb/local.d", mode: "0755" }
-    - { path: "{{ srv_root }}/apps/core/observability", mode: "0755" }
-    - { path: "{{ srv_root }}/apps/core/observability/loki", mode: "0755" }
-    - { path: "{{ srv_root }}/apps/core/observability/prometheus", mode: "0755" }
-    - { path: "{{ srv_root }}/apps/core/observability/grafana", mode: "0755" }
-    - { path: "{{ srv_root }}/apps/core/observability/grafana/provisioning", mode: "0755" }
-    - { path: "{{ srv_root }}/apps/core/observability/grafana/provisioning/datasources", mode: "0755" }
-    - { path: "{{ srv_root }}/data", mode: "0750" }
-    - { path: "{{ srv_root }}/data/couchdb", mode: "0750" }
-    - { path: "{{ srv_root }}/data/couchdb/data", mode: "0750" }
-    - { path: "{{ srv_root }}/data/seaweed", mode: "0750" }
-    - { path: "{{ srv_root }}/data/seaweed/data", mode: "0750" }
-    - { path: "{{ srv_root }}/data/observability", mode: "0750" }
-    - { path: "{{ srv_root }}/data/observability/loki", mode: "0750" }
-    - { path: "{{ srv_root }}/data/observability/loki/chunks", mode: "0750" }
-    - { path: "{{ srv_root }}/data/observability/loki/compactor", mode: "0750" }
-    - { path: "{{ srv_root }}/data/observability/prometheus", mode: "0750" }
-    - { path: "{{ srv_root }}/data/observability/grafana", mode: "0750" }
-    - { path: "{{ srv_root }}/logs", mode: "0750" }
-    - { path: "{{ srv_root }}/logs/nginx", mode: "0750" }
-    - { path: "{{ srv_root }}/logs/observability", mode: "0750" }
-    - { path: "{{ srv_root }}/backups", mode: "0750" }
-    - { path: "{{ srv_root }}/secrets", mode: "0750" }
-    - { path: "{{ srv_root }}/secrets/runtime", mode: "0750" }
+  loop: "{{ runtime_layout.public_dirs + runtime_layout.restricted_dirs }}"
 
 - name: Ensure service data directories have container-compatible ownership
   ansible.builtin.file:
-    path: "{{ item.path }}"
+    path: "{{ item.value.path }}"
     state: directory
-    owner: "{{ item.owner }}"
-    group: "{{ item.group }}"
-    mode: "{{ item.mode }}"
+    owner: "{{ item.value.uid }}"
+    group: "{{ item.value.gid }}"
+    mode: "{{ item.value.mode }}"
     recurse: true
-  loop:
-    - { path: "{{ srv_root }}/data/couchdb/data", owner: "{{ couchdb_container_uid }}", group: "{{ couchdb_container_gid }}", mode: "0750" }
-    - { path: "{{ srv_root }}/data/seaweed/data", owner: "{{ seaweed_container_uid }}", group: "{{ seaweed_container_gid }}", mode: "0750" }
-    - { path: "{{ srv_root }}/data/observability/loki", owner: "{{ loki_container_uid }}", group: "{{ loki_container_gid }}", mode: "0750" }
-    - { path: "{{ srv_root }}/data/observability/loki/chunks", owner: "{{ loki_container_uid }}", group: "{{ loki_container_gid }}", mode: "0750" }
-    - { path: "{{ srv_root }}/data/observability/loki/compactor", owner: "{{ loki_container_uid }}", group: "{{ loki_container_gid }}", mode: "0750" }
-    - { path: "{{ srv_root }}/data/observability/prometheus", owner: "{{ prometheus_container_uid }}", group: "{{ prometheus_container_gid }}", mode: "0750" }
-    - { path: "{{ srv_root }}/data/observability/grafana", owner: "{{ grafana_container_uid }}", group: "{{ grafana_container_gid }}", mode: "0750" }
+  loop: "{{ runtime_service_ownership | dict2items }}"

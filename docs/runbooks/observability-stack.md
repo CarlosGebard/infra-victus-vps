@@ -49,7 +49,7 @@ Alloy uses host port `12345` for its HTTP endpoints so Prometheus can scrape it 
 - Grafana data: `/srv/data/observability/grafana`
 - Configs: `/srv/apps/core/observability`
 
-The deploy and bootstrap automation assign host-side ownership of each persistent data directory to the UID/GID expected by the container image. This avoids repeated `permission denied` failures on bind-mounted data paths after image pulls or host rebuilds.
+The deploy and bootstrap automation derive host-side directory layout and service ownership from centralized mappings in Ansible group vars. `runtime_layout` defines the host paths and modes, while `runtime_service_ownership` assigns container-compatible UID/GID ownership for writable service data. This avoids repeated `permission denied` failures on bind-mounted data paths after image pulls or host rebuilds.
 
 ## Loki config note
 

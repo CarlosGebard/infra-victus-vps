@@ -6,19 +6,7 @@
     owner: root
     group: root
     mode: "{{ item.mode }}"
-  loop:
-    - { path: "{{ srv_root }}/apps/core", mode: "0755" }
-    - { path: "{{ srv_root }}/apps/core/nginx", mode: "0755" }
-    - { path: "{{ srv_root }}/apps/core/nginx/conf.d", mode: "0755" }
-    - { path: "{{ srv_root }}/apps/core/couchdb", mode: "0755" }
-    - { path: "{{ srv_root }}/apps/core/couchdb/local.d", mode: "0755" }
-    - { path: "{{ srv_root }}/apps/core/observability", mode: "0755" }
-    - { path: "{{ srv_root }}/apps/core/observability/loki", mode: "0755" }
-    - { path: "{{ srv_root }}/apps/core/observability/prometheus", mode: "0755" }
-    - { path: "{{ srv_root }}/apps/core/observability/grafana", mode: "0755" }
-    - { path: "{{ srv_root }}/apps/core/observability/grafana/provisioning", mode: "0755" }
-    - { path: "{{ srv_root }}/apps/core/observability/grafana/provisioning/datasources", mode: "0755" }
-    - { path: "{{ srv_root }}/secrets/runtime", mode: "0750" }
+  loop: "{{ runtime_deploy_dirs }}"
 
 - name: Copy core stack compose file
   ansible.builtin.copy:
@@ -98,7 +86,7 @@
     src: "{{ runtime_seaweed_s3_source_file }}"
     dest: "{{ runtime_seaweed_s3_config_path }}"
     owner: root
-    group: "{{ seaweed_container_gid }}"
+    group: "{{ runtime_service_ownership.seaweed.gid }}"
     mode: "0640"
   when: runtime_seaweed_s3_source_file | length > 0
 
