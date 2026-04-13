@@ -33,23 +33,13 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Pull connection secrets from Infisical via OIDC
+      - name: Pull deploy secrets from Infisical via OIDC
         uses: Infisical/secrets-action@v1.0.10
         with:
           method: "oidc"
           identity-id: "0a100e5d-1422-437e-b447-e032f32403fa"
           project-slug: "victus-main-server-qy-2z"
           env-slug: "prod"
-          secret-path: "/connection"
-
-      - name: Pull runtime secrets from Infisical via OIDC
-        uses: Infisical/secrets-action@v1.0.10
-        with:
-          method: "oidc"
-          identity-id: "0a100e5d-1422-437e-b447-e032f32403fa"
-          project-slug: "victus-main-server-qy-2z"
-          env-slug: "prod"
-          secret-path: "/runtime"
 
       - name: Install Ansible
         run: python -m pip install --upgrade pip ansible-core

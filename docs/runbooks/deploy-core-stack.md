@@ -76,7 +76,7 @@ The repository includes a manual workflow at `.github/workflows/deploy-productio
 - targets the GitHub `production` environment
 - requests a GitHub OIDC token with `id-token: write`
 - authenticates to Infisical using `Infisical/secrets-action@v1.0.10`
-- fetches `/connection` and `/runtime` secrets only for the active job
+- fetches deploy secrets from the Infisical root path for the active job
 - stages runtime files on the runner and then calls the deploy playbook
 
 The workflow now commits the Infisical identity metadata directly in YAML:
