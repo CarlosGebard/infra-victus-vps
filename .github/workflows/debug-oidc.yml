@@ -1,4 +1,4 @@
-name: debug-oidc
+name: debug-oidc-manual
 
 on:
   workflow_dispatch:
@@ -11,5 +11,25 @@ jobs:
   debug:
     runs-on: ubuntu-latest
     steps:
-      - name: Debug OIDC token
-        uses: github/actions-oidc-debugger@main
+      - name: Request OIDC token manually
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          AUDIENCE="https://github.com/${GITHUB_REPOSITORY_OWNER}"
+
+          RESP="$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${AUDIENCE}")"
+
+          TOKEN="$(echo "$RESP" | jq -r '.value')"
+
+          echo "Token received: ${TOKEN:0:20}..."
+
+          PAYLOAD_B64="$(echo "$TOKEN" | cut -d '.' -f2)"
+          case $((${#PAYLOAD_B64} % 4)) in
+            2) PAYLOAD_B64="${PAYLOAD_B64}==" ;;
+            3) PAYLOAD_B64="${PAYLOAD_B64}=" ;;
+          esac
+
+          PAYLOAD="$(echo "$PAYLOAD_B64" | tr '_-' '/+' | base64 -d 2>/dev/null || true)"
+          echo "$PAYLOAD" | jq .
