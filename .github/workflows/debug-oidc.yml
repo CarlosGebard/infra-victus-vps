@@ -21,7 +21,7 @@ jobs:
           method: "oidc"
           identity-id: "0a100e5d-1422-437e-b447-e032f32403fa"
           project-slug: "victus-main-server-qy-2z"
-          env-slug: "production"
+          env-slug: "prod"
 
       - name: Verify action ran
         run: |
