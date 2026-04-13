@@ -26,6 +26,16 @@ grafana_apt_arch_map:
 alloy_http_listen_addr: 0.0.0.0:12345
 alloy_storage_path: /var/lib/alloy/data
 alloy_loki_write_url: http://127.0.0.1:3100/loki/api/v1/push
+couchdb_container_uid: 5984
+couchdb_container_gid: 5984
+seaweed_container_uid: 1000
+seaweed_container_gid: 1000
+loki_container_uid: 10001
+loki_container_gid: 10001
+prometheus_container_uid: 65534
+prometheus_container_gid: 65534
+grafana_container_uid: 472
+grafana_container_gid: 472
 tailscale_enabled: true
 tailscale_auth_key: "{{ lookup('ansible.builtin.env', 'TAILSCALE_AUTH_KEY') | default('', true) }}"
 tailscale_advertise_tags:

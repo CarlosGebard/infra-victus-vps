@@ -49,6 +49,8 @@ Alloy uses host port `12345` for its HTTP endpoints so Prometheus can scrape it 
 - Grafana data: `/srv/data/observability/grafana`
 - Configs: `/srv/apps/core/observability`
 
+The deploy and bootstrap automation assign host-side ownership of each persistent data directory to the UID/GID expected by the container image. This avoids repeated `permission denied` failures on bind-mounted data paths after image pulls or host rebuilds.
+
 ## Loki config note
 
 The committed Loki config is aligned with the current `grafana/loki:3.6.3` container image and uses filesystem-backed TSDB storage with:
