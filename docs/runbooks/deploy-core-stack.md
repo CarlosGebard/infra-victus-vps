@@ -117,6 +117,8 @@ GitHub Actions fetches these values at runtime and writes:
 - `/srv/secrets/runtime/core.env`
 - `/srv/secrets/runtime/seaweed-s3.json`
 
+`core.env` remains root-only on the host. `seaweed-s3.json` is staged as read-only but world-readable on the host so the SeaweedFS container user can consume the bind-mounted S3 IAM configuration.
+
 For operator-driven manual deploys, use `ops/scripts/fetch_infisical_cloud.py` with local Universal Auth credentials to render the runtime files before invoking Ansible.
 
 The required Infisical Cloud folder layout is:

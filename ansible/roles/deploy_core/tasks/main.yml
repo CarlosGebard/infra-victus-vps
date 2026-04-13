@@ -99,7 +99,7 @@
     dest: "{{ runtime_seaweed_s3_config_path }}"
     owner: root
     group: root
-    mode: "0600"
+    mode: "0644"
   when: runtime_seaweed_s3_source_file | length > 0
 
 - name: Check whether runtime environment file exists

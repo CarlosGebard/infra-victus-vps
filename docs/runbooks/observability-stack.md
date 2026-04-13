@@ -49,6 +49,15 @@ Alloy uses host port `12345` for its HTTP endpoints so Prometheus can scrape it 
 - Grafana data: `/srv/data/observability/grafana`
 - Configs: `/srv/apps/core/observability`
 
+## Loki config note
+
+The committed Loki config is aligned with the current `grafana/loki:3.6.3` container image and uses filesystem-backed TSDB storage with:
+
+- `common.path_prefix: /loki`
+- `storage_config.filesystem.directory: /loki/chunks`
+
+If Loki reports YAML unmarshal errors for filesystem storage fields after an image bump, re-check the config against the official Grafana Loki configuration reference for that exact version before changing the container image again.
+
 ## Phase 2 candidates
 
 - `loki.source.journal` for journald
