@@ -3,4 +3,5 @@
   hosts: vps
   become: true
   roles:
+    - role: directories
     - role: deploy_core

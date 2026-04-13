@@ -149,6 +149,25 @@ jobs:
           RUNTIME_SEAWEED_S3_SOURCE_FILE: ${{ runner.temp }}/seaweed-s3.json
         run: ansible-playbook --private-key ~/.ssh/id_ed25519 -i ansible/inventories/production/hosts.generated.yml ansible/runtime/playbooks/deploy-core.yml
 
+      - name: Collect container diagnostics after failed deploy
+        if: failure()
+        run: |
+          ssh \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -i ~/.ssh/id_ed25519 \
+            "${PROD_SSH_USER}@${PROD_HOST}" \
+            "docker compose --env-file /srv/secrets/runtime/core.env -f /srv/apps/core/docker-compose.yml ps -a || true"
+
+          ssh \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -i ~/.ssh/id_ed25519 \
+            "${PROD_SSH_USER}@${PROD_HOST}" \
+            "docker compose --env-file /srv/secrets/runtime/core.env -f /srv/apps/core/docker-compose.yml logs --no-color --tail=200 nginx couchdb seaweedfs loki prometheus grafana || true"
+
       - name: Validate core runtime after deploy
         env:
           ANSIBLE_CONFIG: .github/ansible.cfg

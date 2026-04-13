@@ -77,6 +77,7 @@ The repository includes a manual workflow at `.github/workflows/deploy-productio
 - requests a GitHub OIDC token with `id-token: write`
 - authenticates to Infisical using `Infisical/secrets-action@v1.0.10`
 - fetches deploy secrets from the Infisical root path for the active job
+- ensures the base `/srv` directory layout exists before deploying the stack
 - stages runtime files on the runner and then calls the deploy playbook
 
 The workflow now commits the Infisical identity metadata directly in YAML:
@@ -86,6 +87,13 @@ The workflow now commits the Infisical identity metadata directly in YAML:
 - `env-slug`: `prod`
 
 If you want approval gates, configure required reviewers on the GitHub `production` environment.
+
+If the deploy step fails after `docker compose up -d`, the workflow now collects:
+
+- `docker compose ps -a`
+- `docker compose logs --no-color --tail=200 nginx couchdb seaweedfs loki prometheus grafana`
+
+That diagnostic block runs on the server over SSH and is intended to expose container startup and permission issues directly in the GitHub Actions logs.
 
 ## Required secret material in Infisical
 
