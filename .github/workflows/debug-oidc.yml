@@ -11,35 +11,118 @@ jobs:
   test-oidc:
     runs-on: ubuntu-latest
     environment: production
+    env:
+      INFISICAL_API_URL: ${{ vars.INFISICAL_API_URL }}
+      INFISICAL_ORGANIZATION_SLUG: ${{ vars.INFISICAL_ORGANIZATION_SLUG }}
+      INFISICAL_IDENTITY_ID: 0a100e5d-1422-437e-b447-e032f32403fa
+      INFISICAL_OIDC_AUDIENCE: https://github.com/CarlosGebard
 
     steps:
-      - name: Get GitHub OIDC token
-        id: oidc
+      - name: Validate workflow inputs
+        shell: bash
         run: |
           set -euo pipefail
-          RESP=$(curl -sS \
-            -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https://github.com/${GITHUB_REPOSITORY_OWNER}")
-          JWT=$(echo "$RESP" | jq -r '.value')
-          echo "JWT obtenido"
-          echo "jwt=$JWT" >> "$GITHUB_OUTPUT"
-      - name: Print JWT payload
-        run: |
-          python3 - <<'PY'
-import os, json, base64
+          test -n "${INFISICAL_API_URL}"
+          test -n "${INFISICAL_ORGANIZATION_SLUG}"
+          test -n "${INFISICAL_IDENTITY_ID}"
+          test -n "${INFISICAL_OIDC_AUDIENCE}"
 
-jwt = """${{ steps.oidc.outputs.jwt }}"""
-payload = jwt.split(".")[1]
-payload += "=" * (-len(payload) % 4)
-decoded = json.loads(base64.urlsafe_b64decode(payload).decode())
-print(json.dumps(decoded, indent=2))
-PY
-      - name: Login to Infisical
+      - name: Print GitHub OIDC payload
+        shell: bash
         run: |
-          curl -i -X POST https://us.infisical.com/api/v1/auth/oidc-auth/login \
-            -H "Content-Type: application/json" \
-            -d "{
-              \"identityId\": \"0a100e5d-1422-437e-b447-e032f32403fa\",
-              \"jwt\": \"${{ steps.oidc.outputs.jwt }}\",
-              \"organizationSlug\": \"victus-y3h-g\"
-            }"
+          set -euo pipefail
+          python3 <<'PY'
+          import base64
+          import json
+          import os
+          import urllib.parse
+          import urllib.request
+
+          audience = os.environ["INFISICAL_OIDC_AUDIENCE"]
+          oidc_url = f'{os.environ["ACTIONS_ID_TOKEN_REQUEST_URL"]}&audience={urllib.parse.quote(audience, safe="")}'
+          request = urllib.request.Request(
+              oidc_url,
+              headers={"Authorization": f'Bearer {os.environ["ACTIONS_ID_TOKEN_REQUEST_TOKEN"]}'},
+          )
+          with urllib.request.urlopen(request) as response:
+              token = json.loads(response.read().decode("utf-8"))["value"]
+
+          print("::add-mask::" + token)
+
+          parts = token.split(".")
+          if len(parts) != 3:
+              raise SystemExit("Unexpected OIDC token format")
+
+          payload = parts[1]
+          padding = "=" * (-len(payload) % 4)
+          claims = json.loads(base64.urlsafe_b64decode(payload + padding).decode("utf-8"))
+
+          debug_claims = {
+              "iss": claims.get("iss"),
+              "aud": claims.get("aud"),
+              "sub": claims.get("sub"),
+              "repository": claims.get("repository"),
+              "repository_owner": claims.get("repository_owner"),
+              "ref": claims.get("ref"),
+              "environment": claims.get("environment"),
+              "job_workflow_ref": claims.get("job_workflow_ref"),
+          }
+          print(json.dumps(debug_claims, indent=2, sort_keys=True))
+          PY
+
+      - name: Test Infisical OIDC login
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          import json
+          import os
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+
+          def request_json(method: str, url: str, *, headers: dict[str, str] | None = None, form: dict[str, str] | None = None) -> dict:
+              request = urllib.request.Request(url, method=method)
+              for key, value in (headers or {}).items():
+                  request.add_header(key, value)
+              data = None
+              if form is not None:
+                  data = urllib.parse.urlencode(form).encode("utf-8")
+                  request.add_header("Content-Type", "application/x-www-form-urlencoded")
+              try:
+                  with urllib.request.urlopen(request, data=data) as response:
+                      return json.loads(response.read().decode("utf-8"))
+              except urllib.error.HTTPError as exc:
+                  body = exc.read().decode("utf-8", errors="replace")
+                  raise SystemExit(f"Infisical login failed: HTTP {exc.code}: {body[:2000]}")
+
+          api_url = os.environ["INFISICAL_API_URL"].strip().rstrip("/")
+          if api_url.endswith("/api"):
+              api_url = api_url[:-4]
+
+          audience = os.environ["INFISICAL_OIDC_AUDIENCE"]
+          oidc_url = f'{os.environ["ACTIONS_ID_TOKEN_REQUEST_URL"]}&audience={urllib.parse.quote(audience, safe="")}'
+          oidc_response = request_json(
+              "GET",
+              oidc_url,
+              headers={"Authorization": f'Bearer {os.environ["ACTIONS_ID_TOKEN_REQUEST_TOKEN"]}'},
+          )
+          jwt = oidc_response["value"]
+          print("::add-mask::" + jwt)
+
+          login_response = request_json(
+              "POST",
+              f"{api_url}/api/v1/auth/oidc-auth/login",
+              form={
+                  "identityId": os.environ["INFISICAL_IDENTITY_ID"],
+                  "jwt": jwt,
+                  "organizationSlug": os.environ["INFISICAL_ORGANIZATION_SLUG"],
+              },
+          )
+
+          access_token = str(login_response.get("accessToken", "")).strip()
+          if not access_token:
+              raise SystemExit(f"Infisical login response missing accessToken: {json.dumps(login_response)[:1000]}")
+
+          print("Infisical login OK")
+          PY
