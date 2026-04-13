@@ -1,4 +1,4 @@
-name: debug-oidc-manual
+name: test-infisical-oidc
 
 on:
   workflow_dispatch:
@@ -8,28 +8,38 @@ permissions:
   contents: read
 
 jobs:
-  debug:
+  test-oidc:
     runs-on: ubuntu-latest
+    environment: production
+
     steps:
-      - name: Request OIDC token manually
-        shell: bash
+      - name: Get GitHub OIDC token
+        id: oidc
         run: |
           set -euo pipefail
+          RESP=$(curl -sS \
+            -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=https://github.com/${GITHUB_REPOSITORY_OWNER}")
+          JWT=$(echo "$RESP" | jq -r '.value')
+          echo "JWT obtenido"
+          echo "jwt=$JWT" >> "$GITHUB_OUTPUT"
+      - name: Print JWT payload
+        run: |
+          python3 - <<'PY'
+import os, json, base64
 
-          AUDIENCE="https://github.com/${GITHUB_REPOSITORY_OWNER}"
-
-          RESP="$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${AUDIENCE}")"
-
-          TOKEN="$(echo "$RESP" | jq -r '.value')"
-
-          echo "Token received: ${TOKEN:0:20}..."
-
-          PAYLOAD_B64="$(echo "$TOKEN" | cut -d '.' -f2)"
-          case $((${#PAYLOAD_B64} % 4)) in
-            2) PAYLOAD_B64="${PAYLOAD_B64}==" ;;
-            3) PAYLOAD_B64="${PAYLOAD_B64}=" ;;
-          esac
-
-          PAYLOAD="$(echo "$PAYLOAD_B64" | tr '_-' '/+' | base64 -d 2>/dev/null || true)"
-          echo "$PAYLOAD" | jq .
+jwt = """${{ steps.oidc.outputs.jwt }}"""
+payload = jwt.split(".")[1]
+payload += "=" * (-len(payload) % 4)
+decoded = json.loads(base64.urlsafe_b64decode(payload).decode())
+print(json.dumps(decoded, indent=2))
+PY
+      - name: Login to Infisical
+        run: |
+          curl -i -X POST https://us.infisical.com/api/v1/auth/oidc-auth/login \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"identityId\": \"0a100e5d-1422-437e-b447-e032f32403fa\",
+              \"jwt\": \"${{ steps.oidc.outputs.jwt }}\",
+              \"organizationSlug\": \"victus-y3h-g\"
+            }"
