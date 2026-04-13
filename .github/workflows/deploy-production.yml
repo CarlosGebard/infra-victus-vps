@@ -184,6 +184,22 @@ jobs:
             "${PROD_SSH_USER}@${PROD_HOST}" \
             "sudo docker inspect loki --format '{{json .State.Health}}' || true"
 
+          ssh \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -i ~/.ssh/id_ed25519 \
+            "${PROD_SSH_USER}@${PROD_HOST}" \
+            "sudo docker image inspect grafana/loki:3.6.3 --format '{{.Config.User}}' || true"
+
+          ssh \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -i ~/.ssh/id_ed25519 \
+            "${PROD_SSH_USER}@${PROD_HOST}" \
+            "sudo stat -c '%A %u:%g %n' /srv/data/observability/loki /srv/data/observability/loki/chunks /srv/data/observability/loki/compactor /srv/apps/core/observability /srv/apps/core/observability/loki /srv/apps/core/observability/loki/config.yml || true"
+
       - name: Validate core runtime after deploy
         env:
           ANSIBLE_CONFIG: .github/ansible.cfg

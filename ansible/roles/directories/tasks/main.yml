@@ -27,6 +27,8 @@
     - { path: "{{ srv_root }}/data/seaweed/data", mode: "0750" }
     - { path: "{{ srv_root }}/data/observability", mode: "0750" }
     - { path: "{{ srv_root }}/data/observability/loki", mode: "0750" }
+    - { path: "{{ srv_root }}/data/observability/loki/chunks", mode: "0750" }
+    - { path: "{{ srv_root }}/data/observability/loki/compactor", mode: "0750" }
     - { path: "{{ srv_root }}/data/observability/prometheus", mode: "0750" }
     - { path: "{{ srv_root }}/data/observability/grafana", mode: "0750" }
     - { path: "{{ srv_root }}/logs", mode: "0750" }
@@ -48,5 +50,7 @@
     - { path: "{{ srv_root }}/data/couchdb/data", owner: "{{ couchdb_container_uid }}", group: "{{ couchdb_container_gid }}", mode: "0750" }
     - { path: "{{ srv_root }}/data/seaweed/data", owner: "{{ seaweed_container_uid }}", group: "{{ seaweed_container_gid }}", mode: "0750" }
     - { path: "{{ srv_root }}/data/observability/loki", owner: "{{ loki_container_uid }}", group: "{{ loki_container_gid }}", mode: "0750" }
+    - { path: "{{ srv_root }}/data/observability/loki/chunks", owner: "{{ loki_container_uid }}", group: "{{ loki_container_gid }}", mode: "0750" }
+    - { path: "{{ srv_root }}/data/observability/loki/compactor", owner: "{{ loki_container_uid }}", group: "{{ loki_container_gid }}", mode: "0750" }
     - { path: "{{ srv_root }}/data/observability/prometheus", owner: "{{ prometheus_container_uid }}", group: "{{ prometheus_container_gid }}", mode: "0750" }
     - { path: "{{ srv_root }}/data/observability/grafana", owner: "{{ grafana_container_uid }}", group: "{{ grafana_container_gid }}", mode: "0750" }
