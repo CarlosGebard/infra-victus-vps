@@ -1,24 +1,24 @@
 ---
 - name: Ensure application directories exist
   ansible.builtin.file:
-    path: "{{ item }}"
+    path: "{{ item.path }}"
     state: directory
     owner: root
     group: root
-    mode: "0750"
+    mode: "{{ item.mode }}"
   loop:
-    - "{{ srv_root }}/apps/core"
-    - "{{ srv_root }}/apps/core/nginx"
-    - "{{ srv_root }}/apps/core/nginx/conf.d"
-    - "{{ srv_root }}/apps/core/couchdb"
-    - "{{ srv_root }}/apps/core/couchdb/local.d"
-    - "{{ srv_root }}/apps/core/observability"
-    - "{{ srv_root }}/apps/core/observability/loki"
-    - "{{ srv_root }}/apps/core/observability/prometheus"
-    - "{{ srv_root }}/apps/core/observability/grafana"
-    - "{{ srv_root }}/apps/core/observability/grafana/provisioning"
-    - "{{ srv_root }}/apps/core/observability/grafana/provisioning/datasources"
-    - "{{ srv_root }}/secrets/runtime"
+    - { path: "{{ srv_root }}/apps/core", mode: "0750" }
+    - { path: "{{ srv_root }}/apps/core/nginx", mode: "0750" }
+    - { path: "{{ srv_root }}/apps/core/nginx/conf.d", mode: "0750" }
+    - { path: "{{ srv_root }}/apps/core/couchdb", mode: "0755" }
+    - { path: "{{ srv_root }}/apps/core/couchdb/local.d", mode: "0755" }
+    - { path: "{{ srv_root }}/apps/core/observability", mode: "0755" }
+    - { path: "{{ srv_root }}/apps/core/observability/loki", mode: "0755" }
+    - { path: "{{ srv_root }}/apps/core/observability/prometheus", mode: "0755" }
+    - { path: "{{ srv_root }}/apps/core/observability/grafana", mode: "0755" }
+    - { path: "{{ srv_root }}/apps/core/observability/grafana/provisioning", mode: "0755" }
+    - { path: "{{ srv_root }}/apps/core/observability/grafana/provisioning/datasources", mode: "0755" }
+    - { path: "{{ srv_root }}/secrets/runtime", mode: "0750" }
 
 - name: Copy core stack compose file
   ansible.builtin.copy:
@@ -50,7 +50,7 @@
     dest: "{{ srv_root }}/apps/core/couchdb/local.d/local.ini"
     owner: root
     group: root
-    mode: "0640"
+    mode: "0644"
 
 - name: Copy environment example for operator reference
   ansible.builtin.copy:
@@ -66,7 +66,7 @@
     dest: "{{ srv_root }}/apps/core/observability/loki/config.yml"
     owner: root
     group: root
-    mode: "0640"
+    mode: "0644"
 
 - name: Copy Prometheus config
   ansible.builtin.copy:
@@ -74,7 +74,7 @@
     dest: "{{ srv_root }}/apps/core/observability/prometheus/prometheus.yml"
     owner: root
     group: root
-    mode: "0640"
+    mode: "0644"
 
 - name: Copy Grafana datasource provisioning
   ansible.builtin.copy:
@@ -82,7 +82,7 @@
     dest: "{{ srv_root }}/apps/core/observability/grafana/provisioning/datasources/datasources.yml"
     owner: root
     group: root
-    mode: "0640"
+    mode: "0644"
 
 - name: Stage runtime environment file from controller
   ansible.builtin.copy:

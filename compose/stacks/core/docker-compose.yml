@@ -33,7 +33,7 @@ services:
       COUCHDB_PASSWORD: ${COUCHDB_PASSWORD}
     volumes:
       - /srv/data/couchdb/data:/opt/couchdb/data
-      - /srv/apps/core/couchdb/local.d:/opt/couchdb/etc/local.d:ro
+      - /srv/apps/core/couchdb/local.d/local.ini:/opt/couchdb/etc/local.d/local.ini:ro
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://${COUCHDB_USER:-admin}:${COUCHDB_PASSWORD}@127.0.0.1:5984/_up >/dev/null"]
       interval: 30s
