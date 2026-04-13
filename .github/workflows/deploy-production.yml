@@ -62,7 +62,7 @@ jobs:
         run: |
           cat > .github/ansible.cfg <<'EOF'
           [defaults]
-          inventory = .github/production.inventory.yml
+          inventory = ../ansible/inventories/production/hosts.generated.yml
           roles_path = ../ansible/roles
           collections_path = ../.ansible/collections:~/.ansible/collections:/usr/share/ansible/collections
           retry_files_enabled = False
@@ -89,7 +89,7 @@ jobs:
             echo "          ansible_host: ${PROD_HOST}"
             echo "          ansible_user: ${PROD_SSH_USER}"
             echo '          ansible_become: true'
-          } > .github/production.inventory.yml
+          } > ansible/inventories/production/hosts.generated.yml
 
       - name: Render runtime secret files
         run: |
@@ -130,7 +130,7 @@ jobs:
           ANSIBLE_CONFIG: .github/ansible.cfg
           RUNTIME_ENV_SOURCE_FILE: ${{ runner.temp }}/core.env
           RUNTIME_SEAWEED_S3_SOURCE_FILE: ${{ runner.temp }}/seaweed-s3.json
-        run: ansible-playbook --private-key ~/.ssh/id_ed25519 -i .github/production.inventory.yml ansible/runtime/playbooks/deploy-core.yml --syntax-check
+        run: ansible-playbook --private-key ~/.ssh/id_ed25519 -i ansible/inventories/production/hosts.generated.yml ansible/runtime/playbooks/deploy-core.yml --syntax-check
 
       - name: Verify SSH connectivity before deploy
         run: |
@@ -147,9 +147,9 @@ jobs:
           ANSIBLE_CONFIG: .github/ansible.cfg
           RUNTIME_ENV_SOURCE_FILE: ${{ runner.temp }}/core.env
           RUNTIME_SEAWEED_S3_SOURCE_FILE: ${{ runner.temp }}/seaweed-s3.json
-        run: ansible-playbook --private-key ~/.ssh/id_ed25519 -i .github/production.inventory.yml ansible/runtime/playbooks/deploy-core.yml
+        run: ansible-playbook --private-key ~/.ssh/id_ed25519 -i ansible/inventories/production/hosts.generated.yml ansible/runtime/playbooks/deploy-core.yml
 
       - name: Validate core runtime after deploy
         env:
           ANSIBLE_CONFIG: .github/ansible.cfg
-        run: ansible-playbook --private-key ~/.ssh/id_ed25519 -i .github/production.inventory.yml ansible/runtime/playbooks/validate-core-runtime.yml
+        run: ansible-playbook --private-key ~/.ssh/id_ed25519 -i ansible/inventories/production/hosts.generated.yml ansible/runtime/playbooks/validate-core-runtime.yml
