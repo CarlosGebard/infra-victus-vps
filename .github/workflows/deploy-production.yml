@@ -158,7 +158,7 @@ jobs:
             -o StrictHostKeyChecking=yes \
             -i ~/.ssh/id_ed25519 \
             "${PROD_SSH_USER}@${PROD_HOST}" \
-            "docker compose --env-file /srv/secrets/runtime/core.env -f /srv/apps/core/docker-compose.yml ps -a || true"
+            "sudo docker compose --env-file /srv/secrets/runtime/core.env -f /srv/apps/core/docker-compose.yml ps -a || true"
 
           ssh \
             -o BatchMode=yes \
@@ -166,7 +166,23 @@ jobs:
             -o StrictHostKeyChecking=yes \
             -i ~/.ssh/id_ed25519 \
             "${PROD_SSH_USER}@${PROD_HOST}" \
-            "docker compose --env-file /srv/secrets/runtime/core.env -f /srv/apps/core/docker-compose.yml logs --no-color --tail=200 nginx couchdb seaweedfs loki prometheus grafana || true"
+            "sudo docker compose --env-file /srv/secrets/runtime/core.env -f /srv/apps/core/docker-compose.yml logs --no-color --tail=200 nginx couchdb seaweedfs loki prometheus grafana || true"
+
+          ssh \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -i ~/.ssh/id_ed25519 \
+            "${PROD_SSH_USER}@${PROD_HOST}" \
+            "sudo docker inspect couchdb --format '{{json .State.Health}}' || true"
+
+          ssh \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -i ~/.ssh/id_ed25519 \
+            "${PROD_SSH_USER}@${PROD_HOST}" \
+            "sudo docker inspect loki --format '{{json .State.Health}}' || true"
 
       - name: Validate core runtime after deploy
         env:
