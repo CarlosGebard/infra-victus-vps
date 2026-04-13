@@ -63,8 +63,8 @@ jobs:
           cat > .github/ansible.cfg <<'EOF'
           [defaults]
           inventory = .github/production.inventory.yml
-          roles_path = ansible/roles
-          collections_path = ./.ansible/collections:~/.ansible/collections:/usr/share/ansible/collections
+          roles_path = ../ansible/roles
+          collections_path = ../.ansible/collections:~/.ansible/collections:/usr/share/ansible/collections
           retry_files_enabled = False
           host_key_checking = True
           EOF
