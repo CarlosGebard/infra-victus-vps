@@ -101,6 +101,7 @@ jobs:
           import urllib.request
           import urllib.error
           import uuid
+          import base64
 
           def request_json(method: str, url: str, *, headers: dict[str, str] | None = None, payload: dict | None = None, form: dict | None = None) -> dict:
               request = urllib.request.Request(url, method=method)
