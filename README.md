@@ -2,24 +2,7 @@
 
 Infrastructure repository for a production VPS managed as code.
 
-## Primary entry points
-
-The main operator interface for this repository is the `Makefile`. Use these commands instead of calling Ansible directly for normal workflows:
-
-- `make bootstrap`
-  Runs the host bootstrap through Infisical-backed SSH material. This is the main entry point for first-host setup and repeat bootstrap runs.
-- `make bootstrap-debug`
-  Runs the same bootstrap flow with higher Ansible verbosity for troubleshooting.
-- `make bootstrap-check`
-  Runs the bootstrap flow in Ansible check mode.
-- `make bootstrap-from TASK="Task Name"`
-  Resumes the bootstrap flow from a specific Ansible task name when you are debugging a late-stage failure.
-- `make verify-bootstrap`
-  Runs post-bootstrap validation against the real host through the same Infisical-backed SSH path and checks that the baseline hardening and host services are in place.
-- `make validate-bootstrap`
-  Runs local syntax validation for the bootstrap playbook.
-- `make validate-runtime`
-  Runs local syntax validation for the runtime deploy and runtime validation playbooks.
+## Dropped,great for learning purposes, but lacks checks and has just one workflow 
 
 Recommended usage order:
 
